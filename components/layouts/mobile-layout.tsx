@@ -16,7 +16,7 @@ export default function MobileLayout({ children }: MobileLayoutProps) {
 
   // Determine if we should show header/footer based on path
   const isLoginPage = pathname === "/login" || pathname === "/register"
-  const isHomePage = pathname === "/"
+  const isHomePage = pathname === "/home"
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0e2c52] w-full overflow-x-hidden">

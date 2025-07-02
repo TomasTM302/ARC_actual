@@ -19,7 +19,7 @@ export default function VigilanteLayout({ children }: { children: React.ReactNod
     if (!isAuthenticated) {
       router.push("/login")
     } else if (!isVigilante) {
-      router.push("/")
+      router.push("/home")
     }
   }, [isAuthenticated, isVigilante, router])
 

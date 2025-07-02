@@ -19,7 +19,7 @@ export default function AuxiliarLayout({ children }: { children: React.ReactNode
     if (!isAuthenticated) {
       router.push("/login")
     } else if (!isAuxiliar) {
-      router.push("/")
+      router.push("/home")
     }
   }, [isAuthenticated, isAuxiliar, router])
 

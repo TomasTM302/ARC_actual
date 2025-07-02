@@ -38,25 +38,25 @@ export default function AuthGuard({
 
     // Si se requieren privilegios de admin y el usuario no es admin
     if (requireAdmin && !isAdmin) {
-      router.push("/")
+      router.push("/home")
       return
     }
 
     // Si se requieren privilegios de vigilante y el usuario no es vigilante
     if (requireVigilante && !isVigilante) {
-      router.push("/")
+      router.push("/home")
       return
     }
 
     // Si se requieren privilegios de mantenimiento y el usuario no es mantenimiento
     if (requireMantenimiento && !isMantenimiento) {
-      router.push("/")
+      router.push("/home")
       return
     }
 
     // Si se requiere un rol específico y el usuario no tiene ese rol
     if (requireRole && user?.role !== requireRole) {
-      router.push("/")
+      router.push("/home")
       return
     }
   }, [

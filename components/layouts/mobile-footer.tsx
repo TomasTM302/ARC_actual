@@ -15,7 +15,7 @@ export default function MobileFooter() {
   return (
     <footer className="fixed bottom-0 left-0 right-0 bg-[#D4AF37] border-t border-[#c9a633] py-2 px-4 z-10">
       <div className="flex justify-around items-center">
-        <Link href="/" className={`flex flex-col items-center ${pathname === "/" ? "text-white" : "text-[#0e2c52]"}`}>
+        <Link href="/home" className={`flex flex-col items-center ${pathname === "/home" ? "text-white" : "text-[#0e2c52]"}`}>
           <Home size={24} />
           <span className="text-xs font-medium mt-1">Inicio</span>
         </Link>
