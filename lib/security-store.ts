@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 
 export interface SecurityAlert {
   id: string
@@ -19,37 +18,8 @@ interface SecurityState {
   getActiveAlerts: () => SecurityAlert[]
 }
 
-export const useSecurityStore = create<SecurityState>()(
-  persist(
-    (set, get) => ({
-      securityAlerts: [
-        {
-          id: "alert-1",
-          houseId: "Casa 123",
-          userId: "user-1",
-          message: "Solicitud de asistencia de vigilancia",
-          createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutos atrás
-          attended: true,
-          attendedAt: new Date(Date.now() - 1000 * 60 * 25).toISOString(), // 25 minutos atrás
-          attendedBy: "vigilante-1",
-        },
-        {
-          id: "alert-2",
-          houseId: "Casa 456",
-          userId: "user-2",
-          message: "Solicitud urgente de asistencia de vigilancia",
-          createdAt: new Date(Date.now() - 1000 * 60 * 10).toISOString(), // 10 minutos atrás
-          attended: false,
-        },
-        {
-          id: "alert-3",
-          houseId: "Casa 789",
-          userId: "user-3",
-          message: "Solicitud de asistencia de vigilancia",
-          createdAt: new Date().toISOString(), // Ahora
-          attended: false,
-        },
-      ],
+export const useSecurityStore = create<SecurityState>((set, get) => ({
+      securityAlerts: [],
 
       createSecurityAlert: (alert) => {
         const id = `alert-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
@@ -89,9 +59,4 @@ export const useSecurityStore = create<SecurityState>()(
       getActiveAlerts: () => {
         return get().securityAlerts.filter((alert) => !alert.attended)
       },
-    }),
-    {
-      name: "arcos-security-storage",
-    },
-  ),
-)
+    }))
