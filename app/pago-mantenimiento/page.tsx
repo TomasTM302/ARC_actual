@@ -347,14 +347,14 @@ export default function PagoMantenimientoPage() {
         type: "maintenance",
       })
       // Redirigir al inicio
-      window.location.href = "/"
+      window.location.href = "/home"
     }
   }
 
   return (
     <main className="flex min-h-screen flex-col bg-[#0e2c52] pb-20">
       <header className="container mx-auto py-4 px-4 max-w-7xl">
-        <Link href="/" className="flex items-center text-white hover:text-gray-200">
+        <Link href="/home" className="flex items-center text-white hover:text-gray-200">
           <ArrowLeft className="mr-2 h-5 w-5" />
           Volver al inicio
         </Link>

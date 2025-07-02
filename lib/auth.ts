@@ -53,40 +53,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       rememberMe: false,
 
       login: async (credentials) => {
-        // In a real app, this would be an API call
         const { email, password } = credentials
-        const user = get().users.find((u) => u.email === email)
 
-        if (!user) {
-          return { success: false, message: "Credenciales incorrectas" }
-        }
-
-        const match = await bcrypt.compare(password, (user as any).password)
-
-        if (!match) {
-          return { success: false, message: "Credenciales incorrectas" }
-        }
-
-        // Don't include password in the user state
-        const { password: _, ...userWithoutPassword } = user as any
-
-        // Asegurarse de que isMantenimiento se establezca correctamente
-        set({
-          user: userWithoutPassword,
-          isAuthenticated: true,
-          isAdmin: userWithoutPassword.role === "admin",
-          isVigilante: userWithoutPassword.role === "vigilante",
-          isMantenimiento: userWithoutPassword.role === "mantenimiento",
-        })
-
-        console.log(
-          "Login successful, role:",
-          userWithoutPassword.role,
-          "isMantenimiento:",
-          userWithoutPassword.role === "mantenimiento",
-        )
-
-        return { success: true }
       },
 
       logout: () => {

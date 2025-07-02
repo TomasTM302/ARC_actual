@@ -11,7 +11,7 @@ export default function FloatingNavBar() {
   const pathname = usePathname()
   const router = useRouter()
   const [cartCount, setCartCount] = useState(0)
-  const isHomePage = pathname === "/"
+  const isHomePage = pathname === "/home"
   const isVigilantePage = pathname === "/vigilante" || pathname.startsWith("/vigilante/")
 
   // Don't show the navigation bar on login page, admin routes, or vigilante pages
@@ -41,7 +41,7 @@ export default function FloatingNavBar() {
           )}
 
           {/* Botón central */}
-          <Link href="/" className="flex items-center justify-center">
+          <Link href="/home" className="flex items-center justify-center">
             <div className="bg-[#0e2c52] text-white rounded-full w-10 h-10 flex items-center justify-center">
               <span className="font-bold">P</span>
             </div>

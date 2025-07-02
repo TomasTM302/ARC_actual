@@ -10,7 +10,7 @@ export default function AuxiliarPage() {
 
   useEffect(() => {
     if (!isAuthenticated || !isMantenimiento) {
-      router.push("/")
+      router.push("/home")
     } else {
       // Redirigir automáticamente a la vista de condominios como página principal
       router.replace("/auxiliar/reportes-condominio")
