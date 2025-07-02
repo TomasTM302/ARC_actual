@@ -10,10 +10,6 @@ A new connection pool using MySQL is available at `lib/db.ts`. Configure your en
 
 Run `GET /api/health` to verify database connectivity.
 
-### Authentication
-
-Login requests are handled via `/api/login` which validates credentials against
-the MySQL `usuarios` table using `bcryptjs` hashed passwords.
 
 ## Development
 
