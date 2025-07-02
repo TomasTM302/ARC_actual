@@ -54,29 +54,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       login: async (credentials) => {
         const { email, password } = credentials
-        try {
-          const res = await fetch('/api/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password }),
-          })
-          const data = await res.json()
-          if (!res.ok || !data.success) {
-            return { success: false, message: data.message || 'Credenciales incorrectas' }
-          }
-          const user = data.user as User
-          set({
-            user,
-            isAuthenticated: true,
-            isAdmin: user.role === 'admin',
-            isVigilante: user.role === 'vigilante',
-            isMantenimiento: user.role === 'mantenimiento',
-          })
-          return { success: true }
-        } catch (err) {
-          console.error('Login error:', err)
-          return { success: false, message: 'Error al iniciar sesión' }
-        }
+
       },
 
       logout: () => {
