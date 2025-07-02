@@ -1,9 +1,8 @@
 import { create } from "zustand"
-import bcrypt from "bcryptjs"
+import { persist } from "zustand/middleware"
 
 export type UserRole = "admin" | "resident" | "vigilante" | "mantenimiento"
 
-// Actualizar la interfaz User para asegurar que siempre tenga la propiedad house
 export interface User {
   id: string
   firstName: string
@@ -11,6 +10,7 @@ export interface User {
   email: string
   phone: string
   house: string
+  condominiumId: string
   role: UserRole
   createdAt: string
 }
@@ -20,102 +20,174 @@ interface Credentials {
   password: string
 }
 
-// Update the AuthState interface to include rememberMe option
+interface RegisterData {
+  firstName: string
+  lastName: string
+  email: string
+  phone: string
+  house: string
+  condominiumId: string
+  password: string
+  role: UserRole
+}
+
 interface AuthState {
   user: User | null
+  token: string | null
   isAuthenticated: boolean
   isAdmin: boolean
   isVigilante: boolean
   isMantenimiento: boolean
-  users: User[]
   rememberMe: boolean
+  users: User[]
   login: (credentials: Credentials) => Promise<{ success: boolean; message?: string }>
   logout: () => void
-  register: (
-    userData: Omit<User, "id" | "createdAt"> & { password: string },
-  ) => Promise<{ success: boolean; message?: string }>
-  getUsers: () => User[]
   setRememberMe: (value: boolean) => void
-  resetStore: () => void // Añadimos una función para resetear el store
+  fetchUsers: () => Promise<void>
+  getUsers: () => User[]
+  register: (data: RegisterData) => Promise<{ success: boolean; message?: string }>
+  deleteUser: (id: string) => Promise<{ success: boolean; message?: string }>
+  resetStore: () => void
 }
 
-// Mock users for demonstration
-const initialUsers: (User & { password: string })[] = []
-
-// Update the store implementation to include rememberMe and isMantenimiento
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set, get) => ({
       user: null,
+      token: null,
       isAuthenticated: false,
       isAdmin: false,
       isVigilante: false,
       isMantenimiento: false,
-      users: initialUsers,
       rememberMe: false,
+      users: [],
 
       login: async (credentials) => {
-        const { email, password } = credentials
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(credentials),
+          })
 
+          const data = await res.json()
+          if (!res.ok || !data.success) {
+            return { success: false, message: data.message || 'Credenciales incorrectas' }
+          }
+
+          const { user, token } = data
+          set({
+            user,
+            token,
+            isAuthenticated: true,
+            isAdmin: user.role === 'admin',
+            isVigilante: user.role === 'vigilante',
+            isMantenimiento: user.role === 'mantenimiento',
+          })
+
+          return { success: true }
+        } catch (err) {
+          console.error(err)
+          return { success: false, message: 'Error de servidor' }
+        }
       },
 
       logout: () => {
         set({
           user: null,
+          token: null,
           isAuthenticated: false,
           isAdmin: false,
           isVigilante: false,
           isMantenimiento: false,
         })
-      },
 
-      register: async (userData) => {
-        // Check if current user is admin
-        if (!get().isAdmin) {
-          return { success: false, message: "No tienes permisos para registrar usuarios" }
+        if (typeof window !== "undefined") {
+          window.location.href = "/"
         }
-
-        // Check if email already exists
-        if (get().users.some((u) => u.email === userData.email)) {
-          return { success: false, message: "El correo electrónico ya está registrado" }
-        }
-
-        const hashedPassword = await bcrypt.hash(userData.password, 10)
-
-        const newUser = {
-          ...userData,
-          password: hashedPassword,
-          id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-          createdAt: new Date().toISOString(),
-        }
-
-        set((state) => ({
-          users: [...state.users, newUser as any],
-        }))
-
-        return { success: true }
-      },
-
-      getUsers: () => {
-        return get().users.map((user) => {
-          // Ensure password is not included
-          const { password, ...userWithoutPassword } = user as any
-          return userWithoutPassword
-        })
       },
 
       setRememberMe: (value: boolean) => {
         set({ rememberMe: value })
       },
 
-      // Función para resetear el store a su estado inicial
+      fetchUsers: async () => {
+        try {
+          const res = await fetch('/api/users')
+          const data = await res.json()
+          if (res.ok && data.success) {
+            set({ users: data.users })
+          }
+        } catch (err) {
+          console.error(err)
+        }
+      },
+
+      getUsers: () => {
+        return get().users
+      },
+
+      register: async (data: RegisterData) => {
+        try {
+          const res = await fetch('/api/users', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+          })
+          const result = await res.json()
+          if (res.ok && result.success) {
+            set({ users: [...get().users, result.user] })
+            return { success: true }
+          }
+          return { success: false, message: result.message || 'Error al registrar' }
+        } catch (err) {
+          console.error(err)
+          return { success: false, message: 'Error de servidor' }
+        }
+      },
+
+      deleteUser: async (id: string) => {
+        try {
+          const res = await fetch(`/api/users/${id}`, { method: 'DELETE' })
+          const data = await res.json()
+          if (res.ok && data.success) {
+            set({ users: get().users.filter((u) => u.id !== id) })
+            return { success: true }
+          }
+          return { success: false, message: data.message || 'Error al eliminar' }
+        } catch (err) {
+          console.error(err)
+          return { success: false, message: 'Error de servidor' }
+        }
+      },
+
       resetStore: () => {
         set({
           user: null,
+          token: null,
           isAuthenticated: false,
           isAdmin: false,
           isVigilante: false,
           isMantenimiento: false,
-          users: initialUsers,
           rememberMe: false,
+          users: [],
         })
       },
-    }))
+    }),
+    {
+      name: "arcos-auth-storage",
+      partialize: (state) =>
+        state.rememberMe
+          ? {
+              user: state.user,
+              token: state.token,
+              isAuthenticated: state.isAuthenticated,
+              isAdmin: state.isAdmin,
+              isVigilante: state.isVigilante,
+              isMantenimiento: state.isMantenimiento,
+              rememberMe: state.rememberMe,
+            }
+          : { rememberMe: state.rememberMe },
+    },
+  ),
+)

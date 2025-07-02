@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, type ChangeEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { QrScanner } from "@/components/qr-scanner"
-import { ScanBarcode, Shield, X, CheckCircle, AlertTriangle, UserCircle2 } from "lucide-react"
+import { ScanBarcode, Shield, X, CheckCircle, AlertTriangle, UserCircle2 } from "lucide-react" // Added UserCircle2
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
@@ -13,7 +13,7 @@ import { useAuthStore } from "@/lib/auth"
 
 interface QrData {
   [key: string]: string
-  FOTO_INVITADO_URL?: string
+  FOTO_INVITADO_URL?: string // Added for guest photo URL from QR
 }
 
 interface ScanHistoryEntry {
@@ -32,7 +32,7 @@ export default function VigilanteDashboardPage() {
   const [showModal, setShowModal] = useState(false)
   const [currentDecodedText, setCurrentDecodedText] = useState<string | null>(null)
   const [currentParsedData, setCurrentParsedData] = useState<QrData | null>(null)
-  const [guestPhotoUrlFromQR, setGuestPhotoUrlFromQR] = useState<string | null>(null)
+  const [guestPhotoUrlFromQR, setGuestPhotoUrlFromQR] = useState<string | null>(null) // New state for guest photo
 
   const [licensePlateImageFile, setLicensePlateImageFile] = useState<File | null>(null)
   const [ineImageFile, setIneImageFile] = useState<File | null>(null)
@@ -59,6 +59,7 @@ export default function VigilanteDashboardPage() {
         parsedData[key] = value
       }
     })
+    console.log("Parsed QR Data:", parsedData) // Log to see all parsed fields
     return parsedData
   }, [])
 
@@ -67,7 +68,7 @@ export default function VigilanteDashboardPage() {
     setIneImageFile(null)
     setLicensePlateImageUrlPreview(null)
     setIneImageUrlPreview(null)
-    setGuestPhotoUrlFromQR(null)
+    setGuestPhotoUrlFromQR(null) // Reset guest photo URL
     if (licensePlateInputRef.current) licensePlateInputRef.current.value = ""
     if (ineInputRef.current) ineInputRef.current.value = ""
   }
@@ -80,10 +81,14 @@ export default function VigilanteDashboardPage() {
         if (isMountedRef.current) {
           setCurrentDecodedText(decodedText)
           setCurrentParsedData(parsedData)
+          // Extract and set guest photo URL from parsed data
           setGuestPhotoUrlFromQR(parsedData.FOTO_INVITADO_URL || null)
+          console.log("Guest photo URL from QR:", parsedData.FOTO_INVITADO_URL)
+
           setIsScanning(false)
           setShowModal(true)
           setScanError(null)
+          // resetImageStates() is called when modal opens/closes or scan starts
         }
       } catch (error) {
         if (isMountedRef.current) {
@@ -179,11 +184,13 @@ export default function VigilanteDashboardPage() {
     if (ineImageFile) {
       ineUrl = await uploadFile(ineImageFile, "visit_images/ines")
       if (!ineUrl && ineImageFile) {
+        // Check if ineImageFile exists before showing toast
         toast({
           title: "Advertencia",
           description: "No se pudo subir la imagen de la INE, pero se guardará el resto de la información.",
           variant: "default",
         })
+        // Do not return here if license plate was successful or not attempted
       }
     }
 
@@ -195,7 +202,7 @@ export default function VigilanteDashboardPage() {
       placa_vehiculo: licensePlateUrl,
       scanned_at: currentDecodedText ?? '',
       fecha_entrada: new Date().toISOString(),
-    }
+    } as any
 
     try {
       const res = await fetch("/api/entry-history", {
@@ -213,6 +220,7 @@ export default function VigilanteDashboardPage() {
         action: <CheckCircle className="text-green-500" />,
       })
       setShowModal(false)
+      // resetImageStates() is called when modal closes
     } catch (error: any) {
       console.error("Error saving scan history:", error)
       toast({
@@ -237,7 +245,7 @@ export default function VigilanteDashboardPage() {
       DIRECCION: "Destino",
       ACOMPAÑANTES: "Acompañantes",
       ACOMPANANTES: "Acompañantes",
-      FOTO_INVITADO_URL: "Foto del Invitado (del QR)",
+      FOTO_INVITADO_URL: "Foto del Invitado (del QR)", // Label for the new field if displayed directly
     }
     return labels[key] || key
   }, [])
@@ -249,6 +257,7 @@ export default function VigilanteDashboardPage() {
     }
   }, [])
 
+  // Call resetImageStates when modal is closed or scan starts
   useEffect(() => {
     if (!showModal || isScanning) {
       resetImageStates()
@@ -321,6 +330,7 @@ export default function VigilanteDashboardPage() {
         open={showModal}
         onOpenChange={(open) => {
           if (!isLoading) setShowModal(open)
+          // resetImageStates is now handled by useEffect watching showModal
         }}
       >
         <DialogContent className="sm:max-w-lg">
@@ -334,6 +344,7 @@ export default function VigilanteDashboardPage() {
             </DialogClose>
           </DialogHeader>
           <div className="space-y-4 py-2 max-h-[70vh] overflow-y-auto">
+            {/* Display Guest Photo from QR */}
             {guestPhotoUrlFromQR && (
               <div className="mb-4 text-center">
                 <p className="text-sm font-medium text-gray-700 mb-2">Foto del Invitado (Registrada)</p>
@@ -343,11 +354,16 @@ export default function VigilanteDashboardPage() {
                   width={150}
                   height={150}
                   className="rounded-md object-cover mx-auto border"
+                  onError={(e) => {
+                    console.warn("Error loading guest photo from QR URL:", guestPhotoUrlFromQR)
+                    // Optionally set a placeholder if image fails to load
+                    // e.currentTarget.src = "/placeholder.svg?width=150&height=150"
+                  }}
                 />
               </div>
             )}
             {!guestPhotoUrlFromQR &&
-              currentParsedData && (
+              currentParsedData && ( // Show placeholder if no photo URL in QR
                 <div className="mb-4 text-center">
                   <p className="text-sm font-medium text-gray-700 mb-2">Foto del Invitado (Registrada)</p>
                   <div className="w-[150px] h-[150px] mx-auto border rounded-md flex items-center justify-center bg-gray-100">
@@ -358,6 +374,7 @@ export default function VigilanteDashboardPage() {
 
             {currentParsedData &&
               Object.entries(currentParsedData).map(([key, value]) => {
+                // Don't display the FOTO_INVITADO_URL as a text field if we are already showing the image
                 if (key === "FOTO_INVITADO_URL") return null
                 return (
                   <div key={key}>
@@ -367,6 +384,7 @@ export default function VigilanteDashboardPage() {
                 )
               })}
             <hr className="my-4" />
+            {/* Captura Foto Placa */}
             <div className="space-y-2">
               <label htmlFor="licensePlate" className="font-medium">
                 Foto de Placa del Vehículo (Captura Actual)
@@ -394,6 +412,7 @@ export default function VigilanteDashboardPage() {
               )}
             </div>
 
+            {/* Captura Foto INE */}
             <div className="space-y-2 mt-4">
               <label htmlFor="ineImage" className="font-medium">
                 Foto de INE del Invitado (Captura Actual)
@@ -426,6 +445,7 @@ export default function VigilanteDashboardPage() {
               variant="outline"
               onClick={() => {
                 if (!isLoading) setShowModal(false)
+                // resetImageStates is handled by useEffect
               }}
               disabled={isLoading}
             >
@@ -433,7 +453,7 @@ export default function VigilanteDashboardPage() {
             </Button>
             <Button
               onClick={handleConfirmAndSave}
-              disabled={isLoading || !currentDecodedText}
+              disabled={isLoading || !currentDecodedText} // Only need currentDecodedText to save something
             >
               {isLoading ? "Guardando..." : "Confirmar y Guardar Registro"}
             </Button>

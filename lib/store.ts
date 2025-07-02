@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { persist } from "zustand/middleware"
 import { v4 as uuidv4 } from "uuid"
 
 export interface PetReport {
@@ -61,80 +62,14 @@ export interface BankingDetails {
   updatedBy: string
 }
 
-// Nuevo modelo para el desglose de pagos
-export interface PaymentBreakdown {
-  // Cuota mensual regular
-  maintenance?: number
-
-  // Recargos por pago tardío
-  surcharges?: number
-
-  // Cuotas recuperadas de meses anteriores
-  recoveredPayments?: {
-    month: number
-    year: number
-    amount: number
-  }[]
-
-  // Multas
-  fines?: {
-    id: string
-    description: string
-    amount: number
-  }[]
-
-  // Convenios de pago
-  agreements?: {
-    id: string
-    description: string
-    amount: number
-  }[]
-
-  // Cuotas adelantadas
-  advancePayments?: {
-    month: number
-    year: number
-    amount: number
-  }[]
-
-  // Eventos en áreas comunes
-  events?: {
-    areaId: string
-    areaName: string
-    date: string
-    amount: number
-  }[]
-
-  // Otros conceptos
-  others?: {
-    description: string
-    amount: number
-  }[]
-}
-
-// Add new interfaces for resident information and enhanced payment tracking
-
-// Add after the existing interfaces, before MaintenancePayment interface:
-
-// Información del residente para pagos
-export interface ResidentInfo {
-  name: string
-  street: string
-  houseNumber: string
-  phone?: string
-  email?: string
-}
-
-// Update the MaintenancePayment interface to include resident information and tracking:
+// Interfaz para pagos de mantenimiento - Actualizada para solo usar transferencia y tarjeta
 export interface MaintenancePayment {
   id: string
   userId: string
   userName: string
-  // Nueva información del residente
-  residentInfo: ResidentInfo
   amount: number
   paymentDate: string
-  paymentMethod: "transfer" | "credit_card"
+  paymentMethod: "transfer" | "credit_card" // Actualizado: solo transferencia o tarjeta
   status: "pending" | "completed" | "rejected"
   receiptUrl?: string
   notes?: string
@@ -143,30 +78,17 @@ export interface MaintenancePayment {
   createdAt: string
   updatedAt: string
   updatedBy?: string
-  // Campo para desglose de pagos
-  breakdown?: PaymentBreakdown
-  // Clave de rastreo
-  trackingKey?: string
-  // Estado del colono
-  residentStatus?: "Ordinario" | "Moroso" | "Al corriente" | "Nuevo"
-  // Comentarios adicionales
-  comments?: string
 }
 
-// Interfaz para pagos de mantenimiento - Actualizada con desglose
-// Add tracking key generation function before the useAppStore:
-// Función para generar clave de rastreo
-const generateTrackingKey = (): string => {
-  const timestamp = Date.now().toString()
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase()
-  return `${timestamp.slice(-6)}${random}`
-}
-
+// Nueva interfaz para tareas administrativas
 export interface AdminTask {
   id: string
   title: string
-  description: string
-  status: "pending" | "inProgress" | "completed"
+  description?: string
+  priority: "low" | "medium" | "high"
+  status: "pending" | "in-progress" | "completed"
+  dueDate?: string
+  assignedTo?: string
   createdAt: string
   updatedAt: string
   completedAt?: string
@@ -216,15 +138,6 @@ interface AppState {
   deleteMaintenancePayment: (id: string) => void
   getMaintenancePaymentsByUser: (userId: string) => MaintenancePayment[]
   getMaintenancePaymentsByMonth: (month: number, year: number) => MaintenancePayment[]
-  // Nueva función para obtener pagos categorizados por mes y año
-  getCategorizedPaymentsByMonth: (month: number, year: number) => Record<string, number>
-  // Nueva función para obtener pagos categorizados por rango de meses
-  getCategorizedPaymentsByRange: (
-    startMonth: number,
-    startYear: number,
-    endMonth: number,
-    endYear: number,
-  ) => Record<string, number[]>
   addAdminTask: (task: Omit<AdminTask, "id" | "createdAt" | "completedAt">) => void
   updateAdminTask: (id: string, updates: Partial<AdminTask>) => void
   completeAdminTask: (id: string) => void
@@ -232,7 +145,9 @@ interface AppState {
 }
 
 // Actualizar el estado inicial y las funciones
-export const useAppStore = create<AppState>((set, get) => ({
+export const useAppStore = create<AppState>()(
+  persist(
+    (set, get) => ({
       petReports: [],
       notices: [],
       // Precio inicial de mantenimiento
@@ -242,11 +157,198 @@ export const useAppStore = create<AppState>((set, get) => ({
       // Recargo por pago tardío predeterminado
       maintenanceLatePaymentFee: 200,
       // Historial de precios vacío inicialmente
-      maintenancePriceHistory: [],
+      maintenancePriceHistory: [
+        {
+          id: `price-${Date.now()}`,
+          price: 1500,
+          effectiveDate: new Date().toISOString(),
+          createdBy: "admin-1",
+          createdAt: new Date().toISOString(),
+          notes: "Precio inicial de mantenimiento",
+        },
+      ],
+      // Datos bancarios iniciales (null)
       bankingDetails: null,
       // Comercios cercanos iniciales
-      nearbyBusinesses: [],
-      maintenancePayments: [],
+      nearbyBusinesses: [
+        {
+          id: "business-1",
+          name: "Supermercado El Ahorro",
+          imageUrl: "/placeholder.svg?height=200&width=200",
+          websiteUrl: "https://www.example.com/supermercado",
+          category: "Supermercado",
+          createdAt: new Date().toISOString(),
+          createdBy: "admin-1",
+        },
+        {
+          id: "business-2",
+          name: "Farmacia Salud",
+          imageUrl: "/placeholder.svg?height=200&width=200",
+          websiteUrl: "https://www.example.com/farmacia",
+          category: "Farmacia",
+          createdAt: new Date().toISOString(),
+          createdBy: "admin-1",
+        },
+        {
+          id: "business-3",
+          name: "Restaurante La Buena Mesa",
+          imageUrl: "/placeholder.svg?height=200&width=200",
+          websiteUrl: "https://www.example.com/restaurante",
+          category: "Restaurante",
+          createdAt: new Date().toISOString(),
+          createdBy: "admin-1",
+        },
+      ],
+      // Pagos de mantenimiento iniciales (datos de ejemplo)
+      maintenancePayments: [
+        {
+          id: "payment-1",
+          userId: "user-1",
+          userName: "Juan Pérez",
+          amount: 1500,
+          paymentDate: "2023-04-05T10:30:00.000Z",
+          paymentMethod: "transfer",
+          status: "completed",
+          month: 4,
+          year: 2023,
+          createdAt: "2023-04-05T10:30:00.000Z",
+          updatedAt: "2023-04-05T10:30:00.000Z",
+        },
+        {
+          id: "payment-2",
+          userId: "user-2",
+          userName: "María López",
+          amount: 1500,
+          paymentDate: "2023-04-08T14:20:00.000Z",
+          paymentMethod: "credit_card",
+          status: "completed",
+          month: 4,
+          year: 2023,
+          createdAt: "2023-04-08T14:20:00.000Z",
+          updatedAt: "2023-04-08T14:20:00.000Z",
+        },
+        {
+          id: "payment-3",
+          userId: "user-3",
+          userName: "Carlos Rodríguez",
+          amount: 1700,
+          paymentDate: "2023-04-12T09:15:00.000Z",
+          paymentMethod: "transfer",
+          status: "completed",
+          notes: "Incluye recargo por pago tardío",
+          month: 4,
+          year: 2023,
+          createdAt: "2023-04-12T09:15:00.000Z",
+          updatedAt: "2023-04-12T09:15:00.000Z",
+        },
+        {
+          id: "payment-4",
+          userId: "user-1",
+          userName: "Juan Pérez",
+          amount: 1500,
+          paymentDate: "2023-05-07T11:45:00.000Z",
+          paymentMethod: "transfer",
+          status: "completed",
+          month: 5,
+          year: 2023,
+          createdAt: "2023-05-07T11:45:00.000Z",
+          updatedAt: "2023-05-07T11:45:00.000Z",
+        },
+        {
+          id: "payment-5",
+          userId: "user-4",
+          userName: "Ana Martínez",
+          amount: 1500,
+          paymentDate: "2023-05-09T16:30:00.000Z",
+          paymentMethod: "credit_card",
+          status: "completed",
+          month: 5,
+          year: 2023,
+          createdAt: "2023-05-09T16:30:00.000Z",
+          updatedAt: "2023-05-09T16:30:00.000Z",
+        },
+        {
+          id: "payment-6",
+          userId: "user-5",
+          userName: "Roberto Gómez",
+          amount: 1500,
+          paymentDate: "2023-05-10T10:00:00.000Z",
+          paymentMethod: "credit_card",
+          status: "pending",
+          month: 5,
+          year: 2023,
+          createdAt: "2023-05-10T10:00:00.000Z",
+          updatedAt: "2023-05-10T10:00:00.000Z",
+        },
+        // Nuevo pago de ejemplo para probar el botón de acción
+        {
+          id: "payment-7",
+          userId: "user-6",
+          userName: "Laura Sánchez",
+          amount: 1500,
+          paymentDate: new Date().toISOString(),
+          paymentMethod: "transfer",
+          status: "pending",
+          month: new Date().getMonth() + 1,
+          year: new Date().getFullYear(),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ],
+      // Estado inicial para tareas administrativas
+      adminTasks: [
+        {
+          id: "1",
+          title: "Revisar solicitudes de mantenimiento",
+          description: "Revisar y aprobar las solicitudes de mantenimiento pendientes",
+          priority: "high",
+          status: "pending",
+          createdAt: new Date().toISOString(),
+          dueDate: new Date(Date.now() + 86400000).toISOString(), // Mañana
+        },
+        {
+          id: "2",
+          title: "Actualizar reglamento de áreas comunes",
+          description: "Incorporar los cambios aprobados en la última junta directiva",
+          priority: "medium",
+          status: "in-progress",
+          createdAt: new Date(Date.now() - 172800000).toISOString(), // Hace 2 días
+          dueDate: new Date(Date.now() + 604800000).toISOString(), // En una semana
+        },
+        {
+          id: "3",
+          title: "Enviar recordatorios de pago",
+          description: "Enviar recordatorios a residentes con pagos pendientes",
+          priority: "high",
+          status: "completed",
+          createdAt: new Date(Date.now() - 345600000).toISOString(), // Hace 4 días
+          completedAt: new Date(Date.now() - 86400000).toISOString(), // Ayer
+        },
+        {
+          id: "4",
+          title: "Coordinar mantenimiento de jardines",
+          description: "Programar el mantenimiento mensual de jardines y áreas verdes",
+          priority: "medium",
+          status: "pending",
+          createdAt: new Date(Date.now() - 259200000).toISOString(), // Hace 3 días
+          dueDate: new Date(Date.now() + 345600000).toISOString(), // En 4 días
+        },
+        {
+          id: "5",
+          title: "Revisar presupuesto trimestral",
+          description: "Analizar gastos del trimestre y preparar informe para residentes",
+          priority: "low",
+          status: "in-progress",
+          createdAt: new Date(Date.now() - 432000000).toISOString(), // Hace 5 días
+          dueDate: new Date(Date.now() + 172800000).toISOString(), // En 2 días
+        },
+      ],
+
+      addPetReport: (report) => {
+        const id = `pet-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
+        const createdAt = new Date().toISOString()
+
+        const newReport = {
           ...report,
           id,
           createdAt,
@@ -425,15 +527,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       addMaintenancePayment: (payment) => {
         const id = `payment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
         const now = new Date().toISOString()
-        const trackingKey = generateTrackingKey()
 
         const newPayment = {
           ...payment,
           id,
           createdAt: now,
           updatedAt: now,
-          trackingKey,
-          residentStatus: payment.residentStatus || "Ordinario",
         }
 
         set((state) => ({
@@ -473,132 +572,6 @@ export const useAppStore = create<AppState>((set, get) => ({
         return get().maintenancePayments.filter((payment) => payment.month === month && payment.year === year)
       },
 
-      // Nueva función para obtener pagos categorizados por mes y año
-      getCategorizedPaymentsByMonth: (month, year) => {
-        const payments = get().maintenancePayments.filter(
-          (payment) => payment.month === month && payment.year === year && payment.status === "completed",
-        )
-
-        // Inicializar categorías
-        const categories = {
-          maintenance: 0,
-          surcharges: 0,
-          recoveredPayments: 0,
-          fines: 0,
-          agreements: 0,
-          advancePayments: 0,
-          events: 0,
-          others: 0,
-        }
-
-        // Sumar los montos por categoría
-        payments.forEach((payment) => {
-          if (payment.breakdown) {
-            // Cuota de mantenimiento
-            if (payment.breakdown.maintenance) {
-              categories.maintenance += payment.breakdown.maintenance
-            }
-
-            // Recargos
-            if (payment.breakdown.surcharges) {
-              categories.surcharges += payment.breakdown.surcharges
-            }
-
-            // Pagos recuperados
-            if (payment.breakdown.recoveredPayments) {
-              categories.recoveredPayments += payment.breakdown.recoveredPayments.reduce(
-                (sum, item) => sum + item.amount,
-                0,
-              )
-            }
-
-            // Multas
-            if (payment.breakdown.fines) {
-              categories.fines += payment.breakdown.fines.reduce((sum, fine) => sum + fine.amount, 0)
-            }
-
-            // Convenios
-            if (payment.breakdown.agreements) {
-              categories.agreements += payment.breakdown.agreements.reduce(
-                (sum, agreement) => sum + agreement.amount,
-                0,
-              )
-            }
-
-            // Pagos adelantados
-            if (payment.breakdown.advancePayments) {
-              categories.advancePayments += payment.breakdown.advancePayments.reduce(
-                (sum, item) => sum + item.amount,
-                0,
-              )
-            }
-
-            // Eventos
-            if (payment.breakdown.events) {
-              categories.events += payment.breakdown.events.reduce((sum, event) => sum + event.amount, 0)
-            }
-
-            // Otros
-            if (payment.breakdown.others) {
-              categories.others += payment.breakdown.others.reduce((sum, item) => sum + item.amount, 0)
-            }
-          } else {
-            // Si no hay desglose, asumimos que todo es cuota de mantenimiento
-            categories.maintenance += payment.amount
-          }
-        })
-
-        return categories
-      },
-
-      // Nueva función para obtener pagos categorizados por rango de meses
-      getCategorizedPaymentsByRange: (startMonth, startYear, endMonth, endYear) => {
-        // Crear un array de meses en el rango
-        const months = []
-        let currentYear = startYear
-        let currentMonth = startMonth
-
-        while (currentYear < endYear || (currentYear === endYear && currentMonth <= endMonth)) {
-          months.push({ month: currentMonth, year: currentYear })
-
-          if (currentMonth === 12) {
-            currentMonth = 1
-            currentYear++
-          } else {
-            currentMonth++
-          }
-        }
-
-        // Inicializar categorías para cada mes
-        const categories = {
-          maintenance: Array(months.length).fill(0),
-          surcharges: Array(months.length).fill(0),
-          recoveredPayments: Array(months.length).fill(0),
-          fines: Array(months.length).fill(0),
-          agreements: Array(months.length).fill(0),
-          advancePayments: Array(months.length).fill(0),
-          events: Array(months.length).fill(0),
-          others: Array(months.length).fill(0),
-        }
-
-        // Procesar cada mes
-        months.forEach((monthData, index) => {
-          const monthCategories = get().getCategorizedPaymentsByMonth(monthData.month, monthData.year)
-
-          // Asignar valores al array correspondiente
-          categories.maintenance[index] = monthCategories.maintenance
-          categories.surcharges[index] = monthCategories.surcharges
-          categories.recoveredPayments[index] = monthCategories.recoveredPayments
-          categories.fines[index] = monthCategories.fines
-          categories.agreements[index] = monthCategories.agreements
-          categories.advancePayments[index] = monthCategories.advancePayments
-          categories.events[index] = monthCategories.events
-          categories.others[index] = monthCategories.others
-        })
-
-        return categories
-      },
-
       // Acciones para tareas administrativas
       addAdminTask: (task) =>
         set((state) => ({
@@ -635,4 +608,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         set((state) => ({
           adminTasks: state.adminTasks.filter((task) => task.id !== id),
         })),
-    }))
+    }),
+    {
+      name: "arcos-app-storage",
+    },
+  ),
+)

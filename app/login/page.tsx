@@ -53,7 +53,7 @@ export default function LoginPage() {
         if (isVigilante) {
           router.push("/vigilante")
         } else if (isMantenimiento) {
-          router.push("/auxiliar")
+          router.push("/mantenimiento")
         } else {
           router.push(redirect)
         }
@@ -73,13 +73,7 @@ export default function LoginPage() {
       <section className="container mx-auto flex-1 flex flex-col items-center justify-center py-8">
         <div className="bg-white rounded-lg p-8 w-full max-w-md text-gray-800 mb-8">
           <div className="flex justify-center mb-6">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/arcos-logo-cozQNjOwGcf80ymyagTnWW6KUPrZVN.png"
-              alt="ARCOS Logo"
-              width={80}
-              height={80}
-              className="object-contain"
-            />
+            <Image src="/images/arcos-logo.png" alt="ARCOS Logo" width={80} height={80} className="object-contain" />
           </div>
 
           <h2 className="text-2xl font-semibold mb-6 text-center">Iniciar Sesión</h2>
