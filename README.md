@@ -11,6 +11,7 @@ A new connection pool using MySQL is available at `lib/db.ts`. Configure your en
 Run `GET /api/health` to verify database connectivity.
 
 
+
 ## Development
 
 Install dependencies and run the dev server:
