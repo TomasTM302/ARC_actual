@@ -90,7 +90,7 @@ export default function AvisosPage() {
   }
 
   // Determinar la URL de retorno basada en el parámetro "from"
-  const backUrl = from === "admin" ? "/admin" : "/"
+  const backUrl = from === "admin" ? "/admin" : "/home"
 
   return (
     <main className="flex min-h-screen flex-col bg-[#0e2c52] pb-20">
