@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/lib/auth"
 
 // Lista de rutas públicas que no requieren autenticación
-const PUBLIC_PATHS = ["/login", "/register"]
+const PUBLIC_PATHS = ["/", "/login", "/register"]
 
 export default function AuthRedirect() {
   const { isAuthenticated, isVigilante, isMantenimiento } = useAuthStore()
@@ -16,6 +16,11 @@ export default function AuthRedirect() {
     // Si el usuario no está autenticado y no está en una ruta pública, redirigir a login
     if (!isAuthenticated && !PUBLIC_PATHS.includes(pathname)) {
       router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      return
+    }
+
+    if (isAuthenticated && pathname === "/login") {
+      router.push("/home")
       return
     }
 
@@ -32,15 +37,26 @@ export default function AuthRedirect() {
       return
     }
 
+    // Si el usuario está autenticado como residente o admin y está en la raíz, redirigir al home
+    if (
+      isAuthenticated &&
+      !isVigilante &&
+      !isMantenimiento &&
+      pathname === "/"
+    ) {
+      router.push("/home")
+      return
+    }
+
     // Si el usuario está autenticado como residente o admin e intenta acceder a páginas de vigilante, redirigir a home
     if (isAuthenticated && !isVigilante && (pathname === "/vigilante" || pathname.startsWith("/vigilante/"))) {
-      router.push("/")
+      router.push("/home")
       return
     }
 
     // Si el usuario está autenticado como residente o admin e intenta acceder a páginas de auxiliar/mantenimiento, redirigir a home
     if (isAuthenticated && !isMantenimiento && (pathname === "/auxiliar" || pathname.startsWith("/auxiliar/"))) {
-      router.push("/")
+      router.push("/home")
       return
     }
   }, [isAuthenticated, isVigilante, isMantenimiento, pathname, router])

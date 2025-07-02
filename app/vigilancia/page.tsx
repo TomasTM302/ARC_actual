@@ -26,7 +26,7 @@ export default function VigilanciaPage() {
 
       // Redirect after success
       setTimeout(() => {
-        router.push("/")
+        router.push("/home")
       }, 3000)
     }, 1500)
   }
