@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 
 export type TaskStatus = "pending" | "in-progress" | "completed"
 export type TaskPriority = "low" | "medium" | "high"
@@ -59,52 +58,9 @@ interface AuxiliarTasksState {
   deleteReport: (id: string) => void
 }
 
-export const useAuxiliarTasksStore = create<AuxiliarTasksState>()(
-  persist(
-    (set) => ({
-      tasks: [
-        {
-          id: "task-1",
-          title: "Revisar iluminación en área común",
-          description: "Verificar que todas las luces del área de alberca funcionen correctamente",
-          status: "pending",
-          priority: "high",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
-          assignedTo: "auxiliar-1",
-          assignedBy: "admin-1",
-          comments: [],
-          section: "Alberca", // Cambiado de condominio a sección
-          condominium: "Condominio 1-Los Arcos", // Añadido condominio
-        },
-        {
-          id: "task-2",
-          title: "Mantenimiento de jardín principal",
-          description: "Podar arbustos y revisar sistema de riego",
-          status: "in-progress",
-          priority: "medium",
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(),
-          assignedTo: "auxiliar-1",
-          assignedBy: "admin-1",
-          comments: [],
-          section: "Jardines", // Cambiado de condominio a sección
-          condominium: "Condominio 2-Las Palmas", // Añadido condominio
-        },
-      ],
-      reports: [
-        {
-          id: "report-1",
-          title: "Reparación de iluminación en alberca",
-          description: "Se reemplazaron 3 focos LED en el área de la alberca que no funcionaban",
-          createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-          auxiliarId: "auxiliar-1",
-          auxiliarName: "Auxiliar Mantenimiento",
-          status: "completed",
-        },
-      ],
+export const useAuxiliarTasksStore = create<AuxiliarTasksState>((set) => ({
+      tasks: [],
+      reports: [],
       addTask: (task) => {
         set((state) => ({
           tasks: [
@@ -180,9 +136,4 @@ export const useAuxiliarTasksStore = create<AuxiliarTasksState>()(
           reports: state.reports.filter((report) => report.id !== id),
         }))
       },
-    }),
-    {
-      name: "auxiliar-tasks-storage",
-    },
-  ),
-)
+    }))

@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 
 export type TaskStatus = "pending" | "in-progress" | "completed"
 export type TaskPriority = "low" | "medium" | "high"
@@ -63,41 +62,8 @@ interface AdminTasksState {
   getTaskReport: (userId?: string, startDate?: string, endDate?: string) => AdminTaskReport[]
 }
 
-export const useAdminTasksStore = create<AdminTasksState>()(
-  persist(
-    (set, get) => ({
-      tasks: [
-        {
-          id: "admin-task-1",
-          title: "Revisar presupuesto trimestral",
-          description: "Analizar los gastos del último trimestre y preparar informe para la junta directiva",
-          status: "pending",
-          priority: "high",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          assignedTo: "admin-2",
-          assignedBy: "admin-1",
-          department: "Finanzas",
-          category: "Reportes",
-          comments: [],
-        },
-        {
-          id: "admin-task-2",
-          title: "Organizar reunión con propietarios",
-          description: "Coordinar fecha, lugar y agenda para la próxima reunión general de propietarios",
-          status: "in-progress",
-          priority: "medium",
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-          updatedAt: new Date().toISOString(),
-          dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-          assignedTo: "admin-3",
-          assignedBy: "admin-1",
-          department: "Administración",
-          category: "Eventos",
-          comments: [],
-        },
-      ],
+export const useAdminTasksStore = create<AdminTasksState>((set, get) => ({
+      tasks: [],
       addTask: (task) => {
         set((state) => ({
           tasks: [
@@ -313,9 +279,4 @@ export const useAdminTasksStore = create<AdminTasksState>()(
           }
         })
       },
-    }),
-    {
-      name: "admin-tasks-storage",
-    },
-  ),
-)
+    }))
