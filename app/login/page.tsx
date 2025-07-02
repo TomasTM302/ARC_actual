@@ -13,7 +13,7 @@ import ResetAuthButton from "@/components/reset-auth-button"
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirect = searchParams.get("redirect") || "/"
+  const redirect = searchParams.get("redirect") || "/home"
   const { login, setRememberMe } = useAuthStore()
   const [formData, setFormData] = useState({
     email: "",

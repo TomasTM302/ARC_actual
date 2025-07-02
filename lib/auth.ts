@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import bcrypt from "bcryptjs"
 
 export type UserRole = "admin" | "resident" | "vigilante" | "mantenimiento"
 
@@ -40,57 +40,10 @@ interface AuthState {
 }
 
 // Mock users for demonstration
-const initialUsers: (User & { password: string })[] = [
-  {
-    id: "admin-1",
-    firstName: "Admin",
-    lastName: "Principal",
-    email: "admin@arcos.com",
-    phone: "1234567890",
-    house: "Administración",
-    role: "admin",
-    password: "admin123", // In a real app, this would be hashed
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "resident-1",
-    firstName: "Usuario",
-    lastName: "Residente",
-    email: "residente@ejemplo.com",
-    phone: "9876543210",
-    house: "Casa 42",
-    role: "resident",
-    password: "123456", // In a real app, this would be hashed
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "vigilante-1",
-    firstName: "Guardia",
-    lastName: "Seguridad",
-    email: "vigilante@arcos.com",
-    phone: "5551234567",
-    house: "Caseta de vigilancia",
-    role: "vigilante",
-    password: "vigilante123", // In a real app, this would be hashed
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "mantenimiento-1",
-    firstName: "Personal",
-    lastName: "Mantenimiento",
-    email: "mantenimiento@arcos.com",
-    phone: "5559876543",
-    house: "Mantenimiento",
-    role: "mantenimiento", // Aseguramos que el rol sea "mantenimiento"
-    password: "mantenimiento123", // In a real app, this would be hashed
-    createdAt: new Date().toISOString(),
-  },
-]
+const initialUsers: (User & { password: string })[] = []
 
 // Update the store implementation to include rememberMe and isMantenimiento
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
       user: null,
       isAuthenticated: false,
       isAdmin: false,
@@ -100,34 +53,30 @@ export const useAuthStore = create<AuthState>()(
       rememberMe: false,
 
       login: async (credentials) => {
-        // In a real app, this would be an API call
         const { email, password } = credentials
-        const user = get().users.find((u) => u.email === email && (u as any).password === password)
-
-        if (!user) {
-          return { success: false, message: "Credenciales incorrectas" }
+        try {
+          const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          })
+          const data = await res.json()
+          if (!res.ok || !data.success) {
+            return { success: false, message: data.message || 'Credenciales incorrectas' }
+          }
+          const user = data.user as User
+          set({
+            user,
+            isAuthenticated: true,
+            isAdmin: user.role === 'admin',
+            isVigilante: user.role === 'vigilante',
+            isMantenimiento: user.role === 'mantenimiento',
+          })
+          return { success: true }
+        } catch (err) {
+          console.error('Login error:', err)
+          return { success: false, message: 'Error al iniciar sesión' }
         }
-
-        // Don't include password in the user state
-        const { password: _, ...userWithoutPassword } = user as any
-
-        // Asegurarse de que isMantenimiento se establezca correctamente
-        set({
-          user: userWithoutPassword,
-          isAuthenticated: true,
-          isAdmin: userWithoutPassword.role === "admin",
-          isVigilante: userWithoutPassword.role === "vigilante",
-          isMantenimiento: userWithoutPassword.role === "mantenimiento",
-        })
-
-        console.log(
-          "Login successful, role:",
-          userWithoutPassword.role,
-          "isMantenimiento:",
-          userWithoutPassword.role === "mantenimiento",
-        )
-
-        return { success: true }
       },
 
       logout: () => {
@@ -151,8 +100,11 @@ export const useAuthStore = create<AuthState>()(
           return { success: false, message: "El correo electrónico ya está registrado" }
         }
 
+        const hashedPassword = await bcrypt.hash(userData.password, 10)
+
         const newUser = {
           ...userData,
+          password: hashedPassword,
           id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
           createdAt: new Date().toISOString(),
         }
@@ -188,22 +140,4 @@ export const useAuthStore = create<AuthState>()(
           rememberMe: false,
         })
       },
-    }),
-    {
-      name: "arcos-auth-storage",
-      // Only persist if rememberMe is true
-      partialize: (state) =>
-        state.rememberMe
-          ? {
-              user: state.user,
-              isAuthenticated: state.isAuthenticated,
-              isAdmin: state.isAdmin,
-              isVigilante: state.isVigilante,
-              isMantenimiento: state.isMantenimiento,
-              rememberMe: state.rememberMe,
-              users: state.users,
-            }
-          : { rememberMe: state.rememberMe, users: state.users },
-    },
-  ),
-)
+    }))

@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import { v4 as uuidv4 } from "uuid"
 
 export interface PetReport {
@@ -233,9 +232,7 @@ interface AppState {
 }
 
 // Actualizar el estado inicial y las funciones
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
+export const useAppStore = create<AppState>((set, get) => ({
       petReports: [],
       notices: [],
       // Precio inicial de mantenimiento
@@ -245,106 +242,11 @@ export const useAppStore = create<AppState>()(
       // Recargo por pago tardío predeterminado
       maintenanceLatePaymentFee: 200,
       // Historial de precios vacío inicialmente
-      maintenancePriceHistory: [
-        {
-          id: `price-${Date.now()}`,
-          price: 1500,
-          effectiveDate: new Date().toISOString(),
-          createdBy: "admin-1",
-          createdAt: new Date().toISOString(),
-          notes: "Precio inicial de mantenimiento",
-        },
-      ],
-      // Datos bancarios iniciales (null)
+      maintenancePriceHistory: [],
       bankingDetails: null,
       // Comercios cercanos iniciales
-      nearbyBusinesses: [
-        {
-          id: "business-1",
-          name: "Supermercado El Ahorro",
-          imageUrl: "/placeholder.svg?height=200&width=200",
-          websiteUrl: "https://www.example.com/supermercado",
-          category: "Supermercado",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin-1",
-        },
-        {
-          id: "business-2",
-          name: "Farmacia Salud",
-          imageUrl: "/placeholder.svg?height=200&width=200",
-          websiteUrl: "https://www.example.com/farmacia",
-          category: "Farmacia",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin-1",
-        },
-        {
-          id: "business-3",
-          name: "Restaurante La Buena Mesa",
-          imageUrl: "/placeholder.svg?height=200&width=200",
-          websiteUrl: "https://www.example.com/restaurante",
-          category: "Restaurante",
-          createdAt: new Date().toISOString(),
-          createdBy: "admin-1",
-        },
-      ],
-      // Pagos de mantenimiento iniciales (datos de ejemplo con desglose)
-      maintenancePayments: [
-        {
-          id: "payment-1",
-          userId: "user-1",
-          userName: "Juan Pérez",
-          residentInfo: {
-            name: "Juan Pérez",
-            street: "Paseo del Cedro",
-            houseNumber: "25",
-            phone: "555-0123",
-            email: "juan.perez@email.com",
-          },
-          amount: 1500,
-          paymentDate: "2023-04-05T10:30:00.000Z",
-          paymentMethod: "transfer",
-          status: "completed",
-          month: 4,
-          year: 2023,
-          createdAt: "2023-04-05T10:30:00.000Z",
-          updatedAt: "2023-04-05T10:30:00.000Z",
-          trackingKey: "089900485594334248",
-          residentStatus: "Ordinario",
-          breakdown: {
-            maintenance: 1500,
-          },
-        },
-        {
-          id: "payment-2",
-          userId: "user-2",
-          userName: "María López",
-          residentInfo: {
-            name: "María López",
-            street: "Paseo del Cedro",
-            houseNumber: "27",
-            phone: "555-0124",
-            email: "maria.lopez@email.com",
-          },
-          amount: 1500,
-          paymentDate: "2023-04-08T14:20:00.000Z",
-          paymentMethod: "credit_card",
-          status: "completed",
-          month: 4,
-          year: 2023,
-          createdAt: "2023-04-08T14:20:00.000Z",
-          updatedAt: "2023-04-08T14:20:00.000Z",
-          trackingKey: "100241205000800",
-          residentStatus: "Ordinario",
-          breakdown: {
-            maintenance: 1500,
-          },
-        },
-      ],
-      addPetReport: (report) => {
-        const id = `pet-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-        const createdAt = new Date().toISOString()
-
-        const newReport = {
+      nearbyBusinesses: [],
+      maintenancePayments: [],
           ...report,
           id,
           createdAt,
@@ -733,9 +635,4 @@ export const useAppStore = create<AppState>()(
         set((state) => ({
           adminTasks: state.adminTasks.filter((task) => task.id !== id),
         })),
-    }),
-    {
-      name: "arcos-app-storage",
-    },
-  ),
-)
+    }))

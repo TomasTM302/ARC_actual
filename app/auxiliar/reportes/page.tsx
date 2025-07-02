@@ -32,7 +32,7 @@ export default function AuxiliarReports() {
 
   useEffect(() => {
     if (!isAuthenticated || !isMantenimiento) {
-      router.push("/")
+      router.push("/home")
     }
   }, [isAuthenticated, isMantenimiento, router])
 
