@@ -5,6 +5,7 @@ import { useEffect, useState, Fragment } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Input } from "@/components/ui/input"
 import { toast } from "@/components/ui/use-toast"
 import { RefreshCw, Trash2 } from "lucide-react"
 import {
@@ -99,12 +100,14 @@ export default function EntryHistoryTable() {
   const [history, setHistory] = useState<ScanHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [filterDate, setFilterDate] = useState("")
 
-  const fetchHistory = async () => {
+  const fetchHistory = async (date?: string) => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/entry-history")
+      const url = date ? `/api/entry-history?date=${date}` : "/api/entry-history"
+      const res = await fetch(url)
       const data = await res.json()
       if (!res.ok || !data.success) {
         throw new Error(data.message || "Error al obtener historial")
@@ -144,15 +147,26 @@ export default function EntryHistoryTable() {
   }
 
   useEffect(() => {
-    fetchHistory()
-  }, [])
+    fetchHistory(filterDate)
+  }, [filterDate])
 
   return (
     <Card className="w-full max-w-2xl mt-8">
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <CardTitle>Historial de Entradas</CardTitle>
-        <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={fetchHistory} disabled={loading}>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={filterDate}
+            onChange={(e) => setFilterDate(e.target.value)}
+            className="max-w-[160px]"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fetchHistory(filterDate)}
+            disabled={loading}
+          >
             <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
             <span className="sr-only">Refrescar</span>
           </Button>
