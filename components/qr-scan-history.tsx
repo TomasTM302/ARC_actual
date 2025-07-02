@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, Fragment } from "react"
+import { useEffect, useState, Fragment, useMemo } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,14 +27,6 @@ function validateDateTime(dateStr: string, timeStr: string): string | null {
     return "Formato de fecha inválido (debe ser YYYY-MM-DD)"
   }
   const [year, month, day] = dateParts
-  const now = new Date()
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const visitDate = new Date(year, month - 1, day)
-  visitDate.setHours(0, 0, 0, 0)
-
-  if (visitDate < today) {
-    return "La fecha de visita no puede ser anterior a hoy"
-  }
 
   if (!/^\d{1,2}:\d{2}$/.test(timeStr)) {
     return "Formato de hora inválido (debe ser HH:MM)"
@@ -44,11 +36,8 @@ function validateDateTime(dateStr: string, timeStr: string): string | null {
     return "Hora o minutos fuera de rango"
   }
 
-  const entryDate = new Date(year, month - 1, day, h, m)
-  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000)
-  if (entryDate < oneHourLater) {
-    return "La hora de entrada debe ser al menos una hora posterior a la actual"
-  }
+  // Only validate formats; older dates are allowed for display purposes
+  // Additional temporal checks have been removed
 
   return null
 }
@@ -101,6 +90,30 @@ export default function EntryHistoryTable() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [filterDate, setFilterDate] = useState("")
+
+  // Agrupa el historial por fecha obtenida del QR o de la fecha de entrada
+  const groupedHistory = useMemo(() => {
+    const groups: Record<string, { item: ScanHistoryItem; qrData: Record<string, string> }[]> = {}
+
+    for (const item of history) {
+      const qrData = parseQrData(item.scanned_at)
+      const dateKey =
+        qrData.FECHA || (item.fecha_entrada ? item.fecha_entrada.split("T")[0] : "Sin fecha")
+
+      if (!groups[dateKey]) {
+        groups[dateKey] = []
+      }
+      groups[dateKey].push({ item, qrData })
+    }
+
+    const sortedKeys = Object.keys(groups).sort((a, b) => {
+      if (a === "Sin fecha") return 1
+      if (b === "Sin fecha") return -1
+      return new Date(b).getTime() - new Date(a).getTime()
+    })
+
+    return sortedKeys.map((date) => ({ date, records: groups[date] }))
+  }, [history])
 
   const fetchHistory = async (date?: string) => {
     setLoading(true)
@@ -200,71 +213,82 @@ export default function EntryHistoryTable() {
         {!loading && !error && history.length === 0 && <p>No hay registros en el historial.</p>}
         {!loading && !error && history.length > 0 && (
           <ScrollArea className="h-[300px]">
-            <ul className="space-y-2">
-              {history.map((item) => {
-                const qrData = parseQrData(item.scanned_at)
-                // Validamos fecha/hora del QR
-                const validationError = qrData.FECHA && qrData.HORA
-                  ? validateDateTime(qrData.FECHA, qrData.HORA)
-                  : "Faltan FECHA o HORA en el QR"
-                return (
-                  <li key={item.id} className="p-3 border rounded-md bg-muted/50 space-y-2">
-                    {validationError ? (
-                      <p className="text-sm font-medium text-red-600">
-                        ⚠️ Registro inválido: {validationError}
-                      </p>
-                    ) : (
-                      <div>
-                        <p className="text-sm font-medium">Datos QR</p>
-                        <div className="grid grid-cols-[auto,1fr] gap-x-2 text-xs text-muted-foreground mb-2">
-                          {Object.entries(qrData).map(([key, value]) => (
-                            <Fragment key={key}>
-                              <span className="font-medium">{getFieldLabel(key)}:</span>
-                              <span className="truncate">{value}</span>
-                            </Fragment>
-                          ))}
-                        </div>
-                        {item.fecha_entrada && (
-                          <p className="text-xs text-muted-foreground">
-                            Entrada: {new Date(item.fecha_entrada).toLocaleString()}
+            {groupedHistory.map(({ date, records }) => (
+              <div key={date} className="mb-4">
+                <h4 className="font-semibold text-sm mb-2">
+                  {date === "Sin fecha" ? date : new Date(date).toLocaleDateString()}
+                </h4>
+                <ul className="space-y-2">
+                  {records.map(({ item, qrData }) => {
+                    const validationError =
+                      qrData.FECHA && qrData.HORA
+                        ? validateDateTime(qrData.FECHA, qrData.HORA)
+                        : "Faltan FECHA o HORA en el QR"
+                    return (
+                      <li
+                        key={item.id}
+                        className="p-3 border rounded-md bg-muted/50 space-y-2"
+                      >
+                        {validationError ? (
+                          <p className="text-sm font-medium text-red-600">
+                            ⚠️ Registro inválido: {validationError}
                           </p>
-                        )}
-                        {item.fecha_salida && (
-                          <p className="text-xs text-muted-foreground">
-                            Salida: {new Date(item.fecha_salida).toLocaleString()}
-                          </p>
-                        )}
-                        {item.tipo && <p className="text-xs text-muted-foreground">Tipo: {item.tipo}</p>}
-                        {(item.ine || item.placa_vehiculo) && (
-                          <div className="flex gap-2 mt-1">
-                            {item.ine && (
-                              <a
-                                href={item.ine}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-blue-600 text-xs truncate underline"
-                              >
-                                INE
-                              </a>
+                        ) : (
+                          <div>
+                            <p className="text-sm font-medium">Datos QR</p>
+                            <div className="grid grid-cols-[auto,1fr] gap-x-2 text-xs text-muted-foreground mb-2">
+                              {Object.entries(qrData).map(([key, value]) => (
+                                <Fragment key={key}>
+                                  <span className="font-medium">{getFieldLabel(key)}:</span>
+                                  <span className="truncate">{value}</span>
+                                </Fragment>
+                              ))}
+                            </div>
+                            {item.fecha_entrada && (
+                              <p className="text-xs text-muted-foreground">
+                                Entrada: {new Date(item.fecha_entrada).toLocaleString()}
+                              </p>
                             )}
-                            {item.placa_vehiculo && (
-                              <a
-                                href={item.placa_vehiculo}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-blue-600 text-xs truncate underline"
-                              >
-                                Placa
-                              </a>
+                            {item.fecha_salida && (
+                              <p className="text-xs text-muted-foreground">
+                                Salida: {new Date(item.fecha_salida).toLocaleString()}
+                              </p>
+                            )}
+                            {item.tipo && (
+                              <p className="text-xs text-muted-foreground">Tipo: {item.tipo}</p>
+                            )}
+                            {(item.ine || item.placa_vehiculo) && (
+                              <div className="flex gap-2 mt-1">
+                                {item.ine && (
+                                  <a
+                                    href={item.ine}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 text-xs truncate underline"
+                                  >
+                                    INE
+                                  </a>
+                                )}
+                                {item.placa_vehiculo && (
+                                  <a
+                                    href={item.placa_vehiculo}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-blue-600 text-xs truncate underline"
+                                  >
+                                    Placa
+                                  </a>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
-                      </div>
-                    )}
-                  </li>
-                )
-              })}
-            </ul>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ))}
           </ScrollArea>
         )}
       </CardContent>
