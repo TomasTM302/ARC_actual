@@ -1,6 +1,36 @@
 import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import { join } from 'path'
+import { Client } from 'basic-ftp'
+
+async function uploadToFtp(file: File, folder: string): Promise<string> {
+  const client = new Client()
+  const {
+    FTP_HOST,
+    FTP_USER,
+    FTP_PASSWORD,
+    FTP_BASE_PATH = '',
+    FTP_PUBLIC_URL_BASE = '',
+  } = process.env
+
+  if (!FTP_HOST || !FTP_USER || !FTP_PASSWORD) {
+    throw new Error('Missing FTP credentials')
+  }
+
+  const remoteDir = folder ? `${FTP_BASE_PATH}/${folder}` : FTP_BASE_PATH
+  const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+
+  await client.access({ host: FTP_HOST, user: FTP_USER, password: FTP_PASSWORD })
+  if (remoteDir) {
+    await client.ensureDir(remoteDir)
+    await client.cd(remoteDir)
+  }
+  const data = Buffer.from(await file.arrayBuffer())
+  await client.uploadFrom(data, fileName)
+  client.close()
+  const path = folder ? `${folder}/${fileName}` : fileName
+  return `${FTP_PUBLIC_URL_BASE.replace(/\/$/, '')}/${path}`.replace(/\/+/g, '/')
+}
 
 export async function POST(req: Request) {
   const formData = await req.formData()
@@ -14,6 +44,16 @@ export async function POST(req: Request) {
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
   const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+
+  // Try FTP upload first if credentials are present
+  if (process.env.FTP_HOST && process.env.FTP_USER && process.env.FTP_PASSWORD) {
+    try {
+      const url = await uploadToFtp(file, folder)
+      return NextResponse.json({ success: true, url })
+    } catch (err) {
+      console.error('FTP upload failed:', err)
+    }
+  }
 
   const endpoint = process.env.HOSTINGER_ENDPOINT
   const bucket = process.env.HOSTINGER_BUCKET
