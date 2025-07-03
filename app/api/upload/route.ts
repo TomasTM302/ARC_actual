@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import { join } from 'path'
 import { Client } from 'basic-ftp'
+import { Readable } from 'stream'
 
 async function uploadToFtp(file: File, folder: string): Promise<string> {
   const client = new Client()
@@ -9,7 +10,8 @@ async function uploadToFtp(file: File, folder: string): Promise<string> {
     FTP_HOST,
     FTP_USER,
     FTP_PASSWORD,
-    FTP_BASE_PATH = '',
+    FTP_LIMITED,
+    UPLOAD_BASE_URL = '',
     FTP_PUBLIC_URL_BASE = '',
   } = process.env
 
@@ -17,19 +19,30 @@ async function uploadToFtp(file: File, folder: string): Promise<string> {
     throw new Error('Missing FTP credentials')
   }
 
-  const remoteDir = folder ? `${FTP_BASE_PATH}/${folder}` : FTP_BASE_PATH
-  const fileName = `${Date.now()}_${file.name.replace(/\s+/g, '_')}`
+  const timestamp = Date.now()
+  const safeName = file.name.replace(/\s+/g, '_')
+  const fileName = `${timestamp}_${safeName}`
 
-  await client.access({ host: FTP_HOST, user: FTP_USER, password: FTP_PASSWORD })
-  if (remoteDir) {
-    await client.ensureDir(remoteDir)
-    await client.cd(remoteDir)
+  await client.access({ host: FTP_HOST, user: FTP_USER, password: FTP_PASSWORD, secure: false })
+
+  let remotePath: string
+  if (FTP_LIMITED === 'true') {
+    remotePath = fileName
+  } else {
+    const dir = `public_html/${folder}`.replace(/\/+$/, '')
+    await client.ensureDir(dir)
+    remotePath = `${dir}/${fileName}`
   }
+
   const data = Buffer.from(await file.arrayBuffer())
-  await client.uploadFrom(data, fileName)
+  await client.uploadFrom(Readable.from(data), remotePath)
   client.close()
-  const path = folder ? `${folder}/${fileName}` : fileName
-  return `${FTP_PUBLIC_URL_BASE.replace(/\/$/, '')}/${path}`.replace(/\/+/g, '/')
+
+  const base = UPLOAD_BASE_URL || FTP_PUBLIC_URL_BASE
+  return [base, folder, fileName]
+    .filter(Boolean)
+    .join('/')
+    .replace(/(?<!:)\/{2,}/g, '/')
 }
 
 export async function POST(req: Request) {
