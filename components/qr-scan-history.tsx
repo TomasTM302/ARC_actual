@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, Fragment, useMemo } from "react"
+import { parseISO, format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -91,15 +92,19 @@ export default function EntryHistoryTable() {
   const [error, setError] = useState<string | null>(null)
   const [filterDate, setFilterDate] = useState("")
 
-  // Agrupa el historial por fecha obtenida del QR o de la fecha de entrada
+  // Agrupa y filtra solo por la fecha real de entrada (fecha_entrada)
   const groupedHistory = useMemo(() => {
     const groups: Record<string, { item: ScanHistoryItem; qrData: Record<string, string> }[]> = {}
 
     for (const item of history) {
       const qrData = parseQrData(item.scanned_at)
-      const dateKey =
-        qrData.FECHA || (item.fecha_entrada ? item.fecha_entrada.split("T")[0] : "Sin fecha")
-
+      // Agrupa por la fecha de entrada real (YYYY-MM-DD, usando parseISO para evitar desfases)
+      let dateKey = "Sin fecha"
+      if (item.fecha_entrada) {
+        // Usa parseISO para evitar desfases de zona horaria
+        const dateObj = parseISO(item.fecha_entrada)
+        dateKey = format(dateObj, "yyyy-MM-dd")
+      }
       if (!groups[dateKey]) {
         groups[dateKey] = []
       }
@@ -109,7 +114,7 @@ export default function EntryHistoryTable() {
     const sortedKeys = Object.keys(groups).sort((a, b) => {
       if (a === "Sin fecha") return 1
       if (b === "Sin fecha") return -1
-      return new Date(b).getTime() - new Date(a).getTime()
+      return a < b ? 1 : -1 // descendente
     })
 
     return sortedKeys.map((date) => ({ date, records: groups[date] }))
@@ -216,7 +221,7 @@ export default function EntryHistoryTable() {
             {groupedHistory.map(({ date, records }) => (
               <div key={date} className="mb-4">
                 <h4 className="font-semibold text-sm mb-2">
-                  {date === "Sin fecha" ? date : new Date(date).toLocaleDateString()}
+                  {date === "Sin fecha" ? date : format(parseISO(date), "dd/MM/yyyy")}
                 </h4>
                 <ul className="space-y-2">
                   {records.map(({ item, qrData }) => {
