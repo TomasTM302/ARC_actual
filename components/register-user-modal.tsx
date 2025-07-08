@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,12 +17,14 @@ interface RegisterUserModalProps {
 
 export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModalProps) {
   const { register } = useAuthStore()
+  const [condominiums, setCondominiums] = useState<{ id: number, name: string }[]>([])
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
     house: "",
+    condominiumId: "",
     password: "",
     confirmPassword: "",
     role: "resident",
@@ -30,7 +32,19 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/condominios")
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setCondominiums(data.condominiums)
+        })
+    }
+  }, [isOpen])
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target
     setFormData((prev) => ({ ...prev, [name]: value }))
   }
@@ -57,6 +71,7 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
         email: formData.email,
         phone: formData.phone,
         house: formData.house,
+        condominiumId: formData.condominiumId,
         password: formData.password,
         role: formData.role as "admin" | "resident" | "vigilante" | "mantenimiento",
       })
@@ -68,6 +83,7 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
           email: "",
           phone: "",
           house: "",
+          condominiumId: "",
           password: "",
           confirmPassword: "",
           role: "resident",
@@ -113,8 +129,33 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="condominium">Condominio</Label>
+            <select
+              id="condominium"
+              name="condominiumId"
+              value={formData.condominiumId}
+              onChange={handleChange as any}
+              className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+              required={formData.role === 'resident'}
+            >
+              <option value="">Seleccionar condominio</option>
+              {condominiums.map((condo) => (
+                <option key={condo.id} value={condo.id}>
+                  {condo.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="house">Casa/Departamento</Label>
-            <Input id="house" name="house" value={formData.house} onChange={handleChange} required />
+            <Input
+              id="house"
+              name="house"
+              value={formData.house}
+              onChange={handleChange}
+              required={formData.role === 'resident'}
+            />
           </div>
 
           <div className="space-y-2">

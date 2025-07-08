@@ -5,7 +5,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/lib/auth"
 
 // Lista de rutas públicas que no requieren autenticación
-const PUBLIC_PATHS = ["/", "/login", "/register"]
+const PUBLIC_PATHS = ["/", "/login", "/register", "/proveedores"]
 
 export default function AuthRedirect() {
   const { isAuthenticated, isVigilante, isMantenimiento } = useAuthStore()

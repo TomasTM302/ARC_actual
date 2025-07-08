@@ -153,101 +153,179 @@ export default function InvitadosPage() {
     }
   }
 
-  const exportToPDF = async () => {
-    if (!showQR || !pdfData) return
-    setIsGeneratingPDF(true)
+   // Genera el PDF con el formato solicitado
+const exportToPDF = async () => {
+  if (!showQR) return;
+  setIsGeneratingPDF(true);
 
-    try {
-      const module = await import("jspdf")
-      const jsPDF = module.jsPDF || module.default
-      const doc = new jsPDF({ unit: "mm", format: "a4" })
-      const W = doc.internal.pageSize.getWidth()
+  try {
+    // 1) Inicialización jsPDF y dimensiones
+const jsPDFModule = await import("jspdf");
+const jsPDF       = jsPDFModule.jsPDF || jsPDFModule.default;
+const doc         = new jsPDF({ unit: "mm", format: "a4" });
+const pageW       = doc.internal.pageSize.getWidth();
 
-      // Marco exterior
-      doc.setDrawColor(14, 44, 82).setLineWidth(2).rect(5, 5, W - 10, 287, "S")
+// 2) Marco exterior
+doc
+  .setDrawColor(14, 44, 82)
+  .setLineWidth(2)
+  .rect(5, 5, pageW - 10, 287, "S");
 
-      // Header
-      const now = new Date()
-      doc
-        .setFont("helvetica", "bold").setFontSize(32).setTextColor(14, 44, 82)
-        .text("PASE DE INVITADO", 15, 32)
-      doc
-        .setFont("helvetica", "normal").setFontSize(10).setTextColor(14, 44, 82)
-        .text(`GENERADO EL ${now.toLocaleDateString("es-MX")} A LAS ${now.toLocaleTimeString("es-MX").toUpperCase()}`, 15, 40)
 
-      // Logo Monet (usa nombre sin espacios)
-      const logo = await getBase64Image("/logo-monet.png")
-      doc.addImage(logo, "PNG", W - 65, 15, 40, 40)
+  // 4) Logo Monet (esquina superior derecha)
+const logoMonet = await getBase64Image("/logo monet.png");
+const logoW     = 40;
+const logoH     = 40;
+doc.addImage(logoMonet, "PNG",85 ,10 , logoW, logoH);
 
-      // Reconstruir QR desde pdfData
-      const acomp = pdfData.companions ? `\nACOMPAÑANTES: ${pdfData.companions}` : ""
-      const qrContent =
-        `NOMBRE: ${pdfData.name}\n` +
-        `TELÉFONO: ${pdfData.phone}\n` +
-        `FECHA: ${pdfData.visitDate}\n` +
-        `HORA: ${pdfData.entryTime}\n` +
-        `DIRECCIÓN: ${pdfData.destination}` +
-        acomp
+// 3) Header: título y fecha
+const now = new Date();
+doc
+  .setFont("helvetica", "bold")
+  .setFontSize(32)
+  .setTextColor(14, 44, 82)
+  .text("PASE DE INVITADO",50, 50);
+doc
+  .setFont("helvetica", "normal")
+  .setFontSize(10)
+  .setTextColor(14, 44, 82)
+  .text(
+    `GENERADO EL ${now.toLocaleDateString("es-MX")} A LAS ${now
+      .toLocaleTimeString("es-MX")
+      .toUpperCase()}`,
+    65,
+    55
+  );
 
-      const qrBase64 = await getBase64Image(
-        `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrContent)}`
-      )
-      const qrSize = 80, qrX = 15, qrY = 60
-      doc.addImage(qrBase64, "PNG", qrX, qrY, qrSize, qrSize)
 
-      // Campos a la derecha
-      let y = qrY + 20, x = qrX + qrSize + 15
-      ;[
-        ["NOMBRE:", pdfData.name],
-        ["TELÉFONO:", pdfData.phone],
-        ["FECHA DE VISITA:", new Date(pdfData.visitDate).toLocaleDateString("es-MX")],
-        ["HORA MÁX. ENTRADA:", pdfData.entryTime],
-      ].forEach(([lbl, val]) => {
-        doc
-          .setFont("helvetica", "bold").setFontSize(15).setTextColor(14, 44, 82)
-          .text(lbl, x, y)
-        doc
-          .setFont("helvetica", "bold").setFontSize(18)
-          .text(val, x, y + 6)
-        y += 16
-      })
+// 5) QR a la izquierda
+const qrPayload = JSON.stringify({
+  name: formData.name,
+  phone: formData.phone,
+  date: new Date(formData.visitDate).toISOString(),
+  entry: formData.entryTime,
+});
+const qrBase64 = await getBase64Image(
+  `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
+    qrPayload
+  )}`
+);
+const qrSize = 80;
+const qrX    = 15;
+const qrY    = 60;
+doc.addImage(qrBase64, "PNG", qrX, qrY, qrSize, qrSize);
 
-      // Dirección y acompañantes
-      let by = qrY + qrSize + 10
-      doc
-        .setFont("helvetica", "bold").setFontSize(12)
-        .text("DIRECCIÓN A VISITAR:", qrX, by)
-      doc
-        .setFont("helvetica", "normal").setFontSize(15)
-        .text(pdfData.destination, qrX + 50, by)
-      by += 10
-      if (pdfData.companions) {
-        doc
-          .setFont("helvetica", "bold").setFontSize(12)
-          .text("ACOMPAÑANTES:", qrX, by)
-        doc
-          .setFont("helvetica", "normal").setFontSize(15)
-          .text(pdfData.companions, qrX + 50, by)
-      }
+// 6) Datos del invitado a la derecha del QR
+let cursorY = qrY+20;
+const textX = qrX + qrSize + 15;
+const fields = [
+  ["NOMBRE:", formData.name],
+  ["TELÉFONO:", formData.phone],
+  ["FECHA DE VISITA:", new Date(formData.visitDate).toLocaleDateString("es-MX")],
+  ["HORA MÁX. ENTRADA:", formData.entryTime],
+];
+fields.forEach(([label, value]) => {
+  doc
+    .setFont("helvetica", "bold")
+    .setFontSize(15)
+    .setTextColor(14, 44, 82)
+    .text(label, textX, cursorY);
+  doc
+    .setFont("helvetica", "bold")
+    .setFontSize(18)
+    .setTextColor(14, 44, 82)
+    .text(value, textX, cursorY + 6);
+  cursorY += 16;
+});
 
-      // Pie de página (usa nombre sin espacios)
-      doc
-        .setFont("helvetica", "normal").setFontSize(8).setTextColor(150)
-        .text("POWERED BY:", 130, 265)
-      const plogo = await getBase64Image("/images/arcos-logo.png")
-      doc.addImage(plogo, "PNG", 150, 258, 8, 10)
-      doc
-        .setFont("helvetica", "bold").setFontSize(9).setTextColor(14, 44, 82)
-        .text("ESTE CÓDIGO QR DEBE SER PRESENTADO EN LA ENTRADA DEL RESIDENCIAL", W / 2, 275, { align: "center" })
+// 7) Dirección y acompañantes en UNA COLUMNA
+const leftX      = qrX;                    // mismo X que tu QR
+let   bottomY    = qrY + qrSize + 10;      // justo debajo del QR
+const labelSize  = 12;
+const valueSize  = 15;
+const indent     = 50;                     // sangría para el valor
+const lineSpacing= 10;                     // separación entre líneas
 
-      doc.save(`Invitado-${pdfData.name.replace(/\s+/g, "-")}.pdf`)
-    } catch (e) {
-      console.error(e)
-      setError("Error al generar PDF. Verifica que las imágenes existan en la carpeta public y que los nombres no tengan espacios.")
-    } finally {
-      setIsGeneratingPDF(false)
-    }
+// FILA 1: Dirección
+doc
+  .setFont("helvetica", "bold")
+  .setFontSize(labelSize)
+  .setTextColor(14, 44, 82)
+  .text("DIRECCIÓN A VISITAR:", leftX, bottomY);
+doc
+  .setFont("helvetica", "normal")
+  .setFontSize(valueSize)
+  .text(formData.destination, leftX + indent, bottomY);
+
+// Avanzamos Y para la siguiente línea
+bottomY += lineSpacing;
+
+// FILA 2: Acompañantes (si aplica)
+if (formData.companions != null) {
+  doc
+    .setFont("helvetica", "bold")
+    .setFontSize(labelSize)
+    .text("ACOMPAÑANTES:", leftX, bottomY);
+  doc
+    .setFont("helvetica", "normal")
+    .setFontSize(valueSize)
+    .text(`${formData.companions}`, leftX + indent, bottomY);
+}
+
+// 8) Mapa estático y link
+const mapBase64 = await getBase64Image("/images/mapa.png");
+const mapX      = textX-10 ;
+const mapY      = qrY + qrSize+20;
+doc.addImage(mapBase64, "PNG", mapX, mapY, 95, 65);
+doc
+  .setFont("helvetica", "normal")
+  .setFontSize(15)
+  .setTextColor(0, 0, 200)
+  .textWithLink(
+    "Ver ubicación en Google Maps",
+    mapX,
+    mapY + 70,
+    { url: "https://goo.gl/maps/XXXXXXXX" }
+  );
+
+
+  const KMBase64 = await getBase64Image("/images/KM.png");
+const KMX      = 15;
+const KMY      = qrY + qrSize+40;
+doc.addImage(KMBase64, "PNG", KMX, KMY,50, 35);
+
+// 9) Sección velocidad (rojo, paralelo)
+
+
+    // 10) Pie de página
+    doc
+      .setFont("helvetica", "normal")
+      .setFontSize(8)
+      .setTextColor(150)
+      .text("POWERED BY:", 130, 265);
+    const logoPower = await getBase64Image("/images/arcos-logo.png");
+    doc.addImage(logoPower, "PNG", 150, 258, 8, 10);
+    doc
+      .setFont("helvetica", "bold")
+      .setFontSize(9)
+      .setTextColor(14, 44, 82)
+      .text(
+        "ESTE CÓDIGO QR DEBE SER PRESENTADO EN LA ENTRADA DEL RESIDENCIAL",
+        pageW / 2,
+        275,
+        { align: "center" }
+      );
+
+    // 11) Guardar el PDF
+    doc.save(`Invitado-${formData.name.replace(/\s+/g, "-")}.pdf`);
+  } catch (error) {
+    console.error("Error al generar el PDF:", error);
+    setError("Hubo un problema al generar el PDF. Por favor, inténtelo de nuevo.");
+  } finally {
+    setIsGeneratingPDF(false);
   }
+};
+
 
   return (
     <main className="flex min-h-screen flex-col bg-[#0e2c52] pb-20">

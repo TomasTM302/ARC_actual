@@ -1,12 +1,11 @@
 "use client"
 
 import type React from "react"
-
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { useAuthStore } from "@/lib/auth"
 
-type UserRole = string // Define UserRole type
+type UserRole = string
 
 interface AuthGuardProps {
   children: React.ReactNode
@@ -19,7 +18,7 @@ interface AuthGuardProps {
 
 export default function AuthGuard({
   children,
-  requireAuth = true,
+  requireAuth = false,
   requireAdmin = false,
   requireVigilante = false,
   requireMantenimiento = false,
@@ -28,12 +27,22 @@ export default function AuthGuard({
   const { isAuthenticated, isAdmin, isVigilante, isMantenimiento, user } = useAuthStore()
   const router = useRouter()
   const pathname = usePathname()
+  const [isAuthorized, setIsAuthorized] = useState(true)
 
   useEffect(() => {
+    // Siempre permitir acceso a la página de vigilante sin autenticación
+    if (pathname.startsWith("/vigilante")) {
+      setIsAuthorized(true)
+      return
+    }
+
     // Si authentication es requerida y el usuario no está autenticado
     if (requireAuth && !isAuthenticated) {
-      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
-      return
+      // No redirigir a login si estamos intentando acceder a /vigilante
+      if (!pathname.startsWith("/vigilante")) {
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+        return
+      }
     }
 
     // Si se requieren privilegios de admin y el usuario no es admin
@@ -43,7 +52,7 @@ export default function AuthGuard({
     }
 
     // Si se requieren privilegios de vigilante y el usuario no es vigilante
-    if (requireVigilante && !isVigilante) {
+    if (requireVigilante && !isVigilante && !pathname.startsWith("/vigilante")) {
       router.push("/home")
       return
     }
@@ -59,6 +68,8 @@ export default function AuthGuard({
       router.push("/home")
       return
     }
+
+    setIsAuthorized(true)
   }, [
     isAuthenticated,
     isAdmin,
@@ -74,19 +85,7 @@ export default function AuthGuard({
     user?.role,
   ])
 
-  // Si authentication es requerida pero el usuario no está autenticado, o
-  // si se requieren privilegios de admin pero el usuario no es admin, o
-  // si se requieren privilegios de vigilante pero el usuario no es vigilante, o
-  // si se requieren privilegios de auxiliar pero el usuario no es auxiliar, o
-  // si se requiere un rol específico pero el usuario no tiene ese rol,
-  // no renderizar los children
-  if (
-    (requireAuth && !isAuthenticated) ||
-    (requireAdmin && !isAdmin) ||
-    (requireVigilante && !isVigilante) ||
-    (requireMantenimiento && !isMantenimiento) ||
-    (requireRole && user?.role !== requireRole)
-  ) {
+  if (!isAuthorized) {
     return null
   }
 
