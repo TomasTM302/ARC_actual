@@ -17,34 +17,62 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuthStore } from "@/lib/auth"
-import { useAppStore, type MaintenancePriceHistory, type BankingDetails } from "@/lib/store"
+import { type MaintenancePriceHistory, type BankingDetails } from "@/lib/store"
 import AuthGuard from "@/components/auth-guard"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 
 export default function MantenimientoPage() {
   const { user } = useAuthStore()
-  const {
-    maintenancePrice,
-    maintenancePriceHistory,
-    updateMaintenancePrice,
-    maintenanceDueDay,
-    maintenanceLatePaymentFee,
-    updateMaintenanceDueDay,
-    updateMaintenanceLatePaymentFee,
-    bankingDetails,
-    updateBankingDetails,
-  } = useAppStore()
 
-  const [newPrice, setNewPrice] = useState<string>(maintenancePrice.toString())
-  const [newDueDay, setNewDueDay] = useState<string>(maintenanceDueDay.toString())
-  const [newLateFee, setNewLateFee] = useState<string>(maintenanceLatePaymentFee.toString())
+  const [maintenancePrice, setMaintenancePrice] = useState<number>(0)
+  const [maintenancePriceHistory, setMaintenancePriceHistory] = useState<MaintenancePriceHistory[]>([])
+  const [maintenanceDueDay, setMaintenanceDueDay] = useState<number>(10)
+  const [maintenanceLatePaymentFee, setMaintenanceLatePaymentFee] = useState<number>(0)
+  const [bankingDetails, setBankingDetails] = useState<BankingDetails | null>(null)
+
+  const [newPrice, setNewPrice] = useState<string>("")
+  const [newDueDay, setNewDueDay] = useState<string>("")
+  const [newLateFee, setNewLateFee] = useState<string>("")
   const [notes, setNotes] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [success, setSuccess] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [activeTab, setActiveTab] = useState<"price" | "dueDate" | "lateFee" | "bankDetails">("price")
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch("/api/maintenance")
+      const data = await res.json()
+      if (res.ok && data.success) {
+        const s = data.settings
+        if (s) {
+          setMaintenancePrice(s.price)
+          setNewPrice(String(s.price))
+          setMaintenanceDueDay(s.due_day)
+          setNewDueDay(String(s.due_day))
+          setMaintenanceLatePaymentFee(s.late_fee)
+          setNewLateFee(String(s.late_fee))
+          setBankingDetails({
+            bankName: s.bank_name,
+            accountHolder: s.account_holder,
+            clabe: s.clabe,
+            updatedAt: s.updated_at,
+            updatedBy: s.updated_by,
+          })
+        }
+        setMaintenancePriceHistory(data.history)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // Cargar datos iniciales desde la API
+  useEffect(() => {
+    fetchSettings()
+  }, [])
 
   // Estado para los datos bancarios
   const [bankData, setBankData] = useState<
@@ -66,7 +94,7 @@ export default function MantenimientoPage() {
     }
   }, [bankingDetails])
 
-  const handlePriceSubmit = (e: React.FormEvent) => {
+  const handlePriceSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -81,11 +109,20 @@ export default function MantenimientoPage() {
     }
 
     try {
-      // Actualizar el precio
       if (user) {
-        updateMaintenancePrice(priceValue, user.id, notes)
-        setSuccess("Precio de mantenimiento actualizado correctamente")
-        setNotes("")
+        const res = await fetch("/api/maintenance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ price: priceValue, updatedBy: user.id, notes }),
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          await fetchSettings()
+          setSuccess("Precio de mantenimiento actualizado correctamente")
+          setNotes("")
+        } else {
+          setError(data.message || "Error al actualizar")
+        }
       } else {
         setError("No se pudo identificar al usuario")
       }
@@ -97,7 +134,7 @@ export default function MantenimientoPage() {
     }
   }
 
-  const handleDueDaySubmit = (e: React.FormEvent) => {
+  const handleDueDaySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -112,11 +149,20 @@ export default function MantenimientoPage() {
     }
 
     try {
-      // Actualizar el día de pago
       if (user) {
-        updateMaintenanceDueDay(dueDayValue, user.id, notes)
-        setSuccess("Fecha límite de pago actualizada correctamente")
-        setNotes("")
+        const res = await fetch("/api/maintenance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dueDay: dueDayValue, updatedBy: user.id, notes }),
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          await fetchSettings()
+          setSuccess("Fecha límite de pago actualizada correctamente")
+          setNotes("")
+        } else {
+          setError(data.message || "Error al actualizar")
+        }
       } else {
         setError("No se pudo identificar al usuario")
       }
@@ -128,7 +174,7 @@ export default function MantenimientoPage() {
     }
   }
 
-  const handleLateFeeSubmit = (e: React.FormEvent) => {
+  const handleLateFeeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -143,11 +189,20 @@ export default function MantenimientoPage() {
     }
 
     try {
-      // Actualizar el recargo
       if (user) {
-        updateMaintenanceLatePaymentFee(lateFeeValue, user.id, notes)
-        setSuccess("Recargo por pago tardío actualizado correctamente")
-        setNotes("")
+        const res = await fetch("/api/maintenance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lateFee: lateFeeValue, updatedBy: user.id, notes }),
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          await fetchSettings()
+          setSuccess("Recargo por pago tardío actualizado correctamente")
+          setNotes("")
+        } else {
+          setError(data.message || "Error al actualizar")
+        }
       } else {
         setError("No se pudo identificar al usuario")
       }
@@ -169,7 +224,7 @@ export default function MantenimientoPage() {
   }
 
   // Manejar envío del formulario de datos bancarios
-  const handleBankDetailsSubmit = (e: React.FormEvent) => {
+  const handleBankDetailsSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -189,12 +244,23 @@ export default function MantenimientoPage() {
 
       // Actualizar datos bancarios
       if (user) {
-        updateBankingDetails({
-          ...bankData,
-          updatedBy: user.id,
-          skipNotification: true, // Añadir flag para omitir notificación
+        const res = await fetch("/api/maintenance", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bankName: bankData.bankName,
+            accountHolder: bankData.accountHolder,
+            clabe: bankData.clabe,
+            updatedBy: user.id,
+          }),
         })
-        setSuccess("Datos bancarios actualizados correctamente")
+        const data = await res.json()
+        if (res.ok && data.success) {
+          await fetchSettings()
+          setSuccess("Datos bancarios actualizados correctamente")
+        } else {
+          setError(data.message || "Error al actualizar")
+        }
       } else {
         setError("No se pudo identificar al usuario")
       }
