@@ -16,15 +16,15 @@ interface RootLayoutClientProps {
 export default function RootLayoutClient({ children }: RootLayoutClientProps) {
   const { isMobile, isTablet } = useDevice()
   const pathname = usePathname()
-  const { isAdmin, isVigilante, isAuxiliar } = useAuthStore()
+  const { isAdmin, isVigilante, isMantenimiento } = useAuthStore()
 
   // Special case for vigilante pages
   if (isVigilante || pathname.startsWith("/vigilante")) {
     return <VigilanteLayout>{children}</VigilanteLayout>
   }
 
-  // Special case for auxiliar pages
-  if (isAuxiliar || pathname.startsWith("/auxiliar")) {
+  // Special case for mantenimiento pages
+  if (isMantenimiento || pathname.startsWith("/mantenimiento")) {
     return <MobileLayout>{children}</MobileLayout>
   }
 

@@ -10,6 +10,7 @@ export default function UsersPage() {
   const { getUsers, fetchUsers, deleteUser } = useAuthStore()
   const users = getUsers()
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false)
+  const [condominiums, setCondominiums] = useState<{ id: number, name: string }[]>([])
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Seguro que deseas eliminar este usuario?')) return
@@ -24,6 +25,11 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers()
+    fetch('/api/condominios')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setCondominiums(data.condominiums)
+      })
   }, [])
 
   // Función para obtener el estilo y texto según el rol
@@ -65,8 +71,14 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users.map((user) => {
+              {users.filter(Boolean).map((user) => {
+                if (!user || !user.role) return null;
                 const { bgColor, textColor, label } = getRoleBadgeStyle(user.role)
+                // Buscar el nombre del condominio por ID
+                const condoName = user.condominiumId
+                  ? (condominiums.find(c => c.id.toString() === user.condominiumId)?.name || user.condominiumId)
+                  : '-'
+                const house = user.house && user.house.trim() !== '' ? user.house : '-'
                 return (
                   <tr key={user.id} className="hover:bg-gray-50">
                     <td className="py-3 px-4 text-sm">
@@ -74,8 +86,8 @@ export default function UsersPage() {
                     </td>
                     <td className="py-3 px-4 text-sm">{user.email}</td>
                     <td className="py-3 px-4 text-sm">{user.phone}</td>
-                    <td className="py-3 px-4 text-sm">{user.condominiumId}</td>
-                    <td className="py-3 px-4 text-sm">{user.house}</td>
+                    <td className="py-3 px-4 text-sm">{condoName}</td>
+                    <td className="py-3 px-4 text-sm">{house}</td>
                     <td className="py-3 px-4 text-sm">
                       <span className={`px-2 py-1 rounded-full text-xs ${bgColor} ${textColor}`}>{label}</span>
                     </td>

@@ -3,7 +3,7 @@ export type AppRole = 'admin' | 'resident' | 'vigilante' | 'mantenimiento'
 export const dbRoleFromAppRole = (role: AppRole): string => {
   switch (role) {
     case 'admin':
-      return 'Administrador'
+      return 'admin'
     case 'resident':
       return 'Residente'
     case 'vigilante':
@@ -24,7 +24,6 @@ export const appRoleFromDbRole = (role: string): AppRole => {
     case 'vigilante':
       return 'vigilante'
     case 'mantenimiento':
-    case 'auxiliar':
       return 'mantenimiento'
     default:
       return role as AppRole

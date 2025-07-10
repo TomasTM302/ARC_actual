@@ -294,9 +294,6 @@ const KMX      = 15;
 const KMY      = qrY + qrSize+40;
 doc.addImage(KMBase64, "PNG", KMX, KMY,50, 35);
 
-// 9) Sección velocidad (rojo, paralelo)
-
-
     // 10) Pie de página
     doc
       .setFont("helvetica", "normal")

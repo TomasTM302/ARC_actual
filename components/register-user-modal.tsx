@@ -31,6 +31,7 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
   })
   const [error, setError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [availableProperties, setAvailableProperties] = useState<{ id: number, numero: string }[]>([])
 
   useEffect(() => {
     if (isOpen) {
@@ -42,11 +43,29 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (formData.condominiumId && formData.role === 'resident') {
+      fetch(`/api/propiedades-disponibles?condominioId=${formData.condominiumId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setAvailableProperties(data.propiedades)
+          else setAvailableProperties([])
+        })
+    } else {
+      setAvailableProperties([])
+    }
+  }, [formData.condominiumId, formData.role])
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
+    // Si cambia el condominio, limpiar la casa
+    if (name === 'condominiumId') {
+      setFormData((prev) => ({ ...prev, [name]: value, house: '' }))
+    } else {
+      setFormData((prev) => ({ ...prev, [name]: value }))
+    }
   }
 
   const handleRoleChange = (value: string) => {
@@ -149,13 +168,28 @@ export default function RegisterUserModal({ isOpen, onClose }: RegisterUserModal
 
           <div className="space-y-2">
             <Label htmlFor="house">Casa/Departamento</Label>
-            <Input
-              id="house"
-              name="house"
-              value={formData.house}
-              onChange={handleChange}
-              required={formData.role === 'resident'}
-            />
+            {formData.role === 'resident' ? (
+              <select
+                id="house"
+                name="house"
+                value={formData.house}
+                onChange={handleChange as any}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                required
+              >
+                <option value="">Seleccionar propiedad</option>
+                {availableProperties.map((prop) => (
+                  <option key={prop.id} value={prop.numero}>{prop.numero}</option>
+                ))}
+              </select>
+            ) : (
+              <Input
+                id="house"
+                name="house"
+                value={formData.house}
+                onChange={handleChange}
+              />
+            )}
           </div>
 
           <div className="space-y-2">

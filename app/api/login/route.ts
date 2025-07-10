@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import bcrypt from 'bcryptjs'
+import { appRoleFromDbRole } from '@/lib/roles'
 
 export async function POST(request: Request) {
   try {
@@ -30,7 +31,7 @@ export async function POST(request: Request) {
       email: user.email,
       phone: user.telefono ?? '',
       house: '',
-      role: user.rol_nombre ?? 'resident',
+      role: appRoleFromDbRole(user.rol_nombre ?? 'resident'),
       createdAt: user.fecha_registro,
       photoUrl: user.foto_url ?? '',
       condominiumId: user.condominio_id ?? null,

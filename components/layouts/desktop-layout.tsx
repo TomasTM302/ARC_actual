@@ -110,10 +110,10 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
             expanded={sidebarOpen}
           />
           <AdminNavLink
-            href="/admin/auxiliares"
+            href="/admin/mantenimiento"
             icon={<Tool size={20} />}
             label="Mantenimiento"
-            isActive={pathname.startsWith("/admin/auxiliares")}
+            isActive={pathname.startsWith("/admin/mantenimiento")}
             expanded={sidebarOpen}
           />
         </nav>
@@ -138,7 +138,7 @@ export default function DesktopLayout({ children }: DesktopLayoutProps) {
               {pathname.startsWith("/admin/comercios") && "Gestión de Comercios"}
               {pathname.startsWith("/admin/usuarios") && "Gestión de Usuarios"}
               {pathname.startsWith("/admin/tareas") && "Gestión de Tareas"}
-              {pathname.startsWith("/admin/auxiliares") && "Gestión de Mantenimiento"}
+              {pathname.startsWith("/admin/mantenimiento") && "Gestión de Mantenimiento"}
             </h1>
             <div className="flex items-center">
               <div className="flex items-center">

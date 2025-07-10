@@ -12,7 +12,7 @@ interface MobileLayoutProps {
 export default function MobileLayout({ children }: MobileLayoutProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const { isAuthenticated, user, isAuxiliar } = useAuthStore()
+  const { isAuthenticated, user, isMantenimiento } = useAuthStore()
 
   // Determine if we should show header/footer based on path
   const isLoginPage = pathname === "/login" || pathname === "/register"

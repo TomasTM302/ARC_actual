@@ -56,8 +56,8 @@ export async function POST(request: Request) {
     let roleRows: any
     if (role === 'mantenimiento') {
       ;[roleRows] = await pool.query(
-        'SELECT id FROM roles WHERE nombre IN (?, ?) LIMIT 1',
-        ['Mantenimiento', 'Auxiliar']
+        'SELECT id FROM roles WHERE nombre = ? LIMIT 1',
+        ['Mantenimiento']
       )
     } else {
       ;[roleRows] = await pool.query(
@@ -80,30 +80,30 @@ export async function POST(request: Request) {
     const userId = result.insertId
 
     if (house && condominiumId) {
-      const [propRows]: any = await pool.query(
-        'SELECT id FROM propiedades WHERE numero = ? AND condominio_id = ? LIMIT 1',
+      // Buscar propiedad existente y disponible
+      let propRows: any
+      ;[propRows] = await pool.query(
+        `SELECT p.id FROM propiedades p
+         LEFT JOIN usuario_propiedad up ON p.id = up.propiedad_id
+         WHERE p.numero = ? AND p.condominio_id = ? AND up.id IS NULL
+         LIMIT 1`,
         [house, condominiumId]
       )
-      if (propRows.length) {
-        await pool.query(
-          'INSERT INTO usuario_propiedad (usuario_id, propiedad_id) VALUES (?, ?)',
-          [userId, propRows[0].id]
+      if (!propRows.length) {
+        return NextResponse.json(
+          { success: false, message: 'No existe una propiedad disponible con ese número y condominio, o ya está asignada.' },
+          { status: 400 }
         )
       }
+      const propiedadId = propRows[0].id
+      // Asignar propiedad a usuario con fecha_inicio actual
+      await pool.query(
+        'INSERT INTO usuario_propiedad (usuario_id, propiedad_id, fecha_inicio) VALUES (?, ?, NOW())',
+        [userId, propiedadId]
+      )
     }
 
-    const user = {
-      id: userId.toString(),
-      firstName,
-      lastName,
-      email,
-      phone,
-      house,
-      condominiumId: condominiumId || '',
-      role,
-      createdAt: new Date().toISOString(),
-    }
-    return NextResponse.json({ success: true, user })
+    return NextResponse.json({ success: true, message: 'Usuario creado' })
   } catch (err) {
     console.error(err)
     return NextResponse.json(

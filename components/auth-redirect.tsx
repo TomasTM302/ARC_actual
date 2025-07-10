@@ -30,10 +30,9 @@ export default function AuthRedirect() {
       return
     }
 
-    // Si el usuario está autenticado como mantenimiento y no está en el dashboard de auxiliar, redirigir allí
-    // Nota: Mantenemos la ruta /auxiliar/ aunque el rol ahora sea "mantenimiento"
-    if (isAuthenticated && isMantenimiento && pathname !== "/auxiliar" && !pathname.startsWith("/auxiliar/")) {
-      router.push("/auxiliar")
+    // Si el usuario está autenticado como mantenimiento y no está en el dashboard de mantenimiento, redirigir allí
+    if (isAuthenticated && isMantenimiento && pathname !== "/mantenimiento" && !pathname.startsWith("/mantenimiento/")) {
+      router.push("/mantenimiento")
       return
     }
 
@@ -54,8 +53,8 @@ export default function AuthRedirect() {
       return
     }
 
-    // Si el usuario está autenticado como residente o admin e intenta acceder a páginas de auxiliar/mantenimiento, redirigir a home
-    if (isAuthenticated && !isMantenimiento && (pathname === "/auxiliar" || pathname.startsWith("/auxiliar/"))) {
+    // Si el usuario está autenticado como residente o admin e intenta acceder a páginas de mantenimiento, redirigir a home
+    if (isAuthenticated && !isMantenimiento && (pathname === "/mantenimiento" || pathname.startsWith("/mantenimiento/"))) {
       router.push("/home")
       return
     }
