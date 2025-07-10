@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 
 export type UserRole = "admin" | "resident" | "vigilante" | "mantenimiento"
 
@@ -50,9 +49,7 @@ interface AuthState {
   resetStore: () => void
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set, get) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
       user: null,
       token: null,
       isAuthenticated: false,
@@ -173,21 +170,4 @@ export const useAuthStore = create<AuthState>()(
           users: [],
         })
       },
-    }),
-    {
-      name: "arcos-auth-storage",
-      partialize: (state) =>
-        state.rememberMe
-          ? {
-              user: state.user,
-              token: state.token,
-              isAuthenticated: state.isAuthenticated,
-              isAdmin: state.isAdmin,
-              isVigilante: state.isVigilante,
-              isMantenimiento: state.isMantenimiento,
-              rememberMe: state.rememberMe,
-            }
-          : { rememberMe: state.rememberMe },
-    },
-  ),
-)
+    }))

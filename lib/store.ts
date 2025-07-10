@@ -1,5 +1,4 @@
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
 import { v4 as uuidv4 } from "uuid"
 
 export interface PetReport {
@@ -145,9 +144,7 @@ interface AppState {
 }
 
 // Actualizar el estado inicial y las funciones
-export const useAppStore = create<AppState>()(
-  persist(
-    (set, get) => ({
+export const useAppStore = create<AppState>()((set, get) => ({
       petReports: [],
       notices: [],
       // Precio inicial de mantenimiento
@@ -609,8 +606,4 @@ export const useAppStore = create<AppState>()(
           adminTasks: state.adminTasks.filter((task) => task.id !== id),
         })),
     }),
-    {
-      name: "arcos-app-storage",
-    },
-  ),
-)
+))
