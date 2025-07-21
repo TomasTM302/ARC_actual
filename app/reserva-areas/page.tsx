@@ -19,6 +19,7 @@ export default function ReservaAreasPage() {
   // State for reservation modal
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [selectedArea, setSelectedArea] = useState({
+    id: "",
     name: "",
     maxPeople: 0,
     deposit: 0,
@@ -42,6 +43,7 @@ export default function ReservaAreasPage() {
     const area = areas.find((a) => a.id === areaId)
     if (area && area.isActive !== false) {
       setSelectedArea({
+        id: area.id,
         name: area.name,
         maxPeople: area.maxPeople || area.capacity || 0,
         deposit: area.deposit,
@@ -251,6 +253,7 @@ export default function ReservaAreasPage() {
         <ReservationModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
+          areaId={selectedArea.id}
           areaName={selectedArea.name}
           maxPeople={selectedArea.maxPeople}
           deposit={selectedArea.deposit}

@@ -25,6 +25,9 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 
 export default function AdminCommonAreasPage() {
+  // Estado para reservaciones reales
+  const [reservaciones, setReservaciones] = useState<any[]>([])
+
   // Variables simuladas para estadísticas
   const reservationStats = {
     total: 0,
@@ -42,7 +45,7 @@ export default function AdminCommonAreasPage() {
   }
   const [areas, setAreas] = useState<any[]>([])
   const [condominios, setCondominios] = useState<any[]>([])
-  // Obtener áreas comunes desde el endpoint real
+  // Obtener áreas comunes y reservaciones desde el endpoint real
   useEffect(() => {
     fetch("/api/areas-comunes")
       .then((res) => res.json())
@@ -61,6 +64,15 @@ export default function AdminCommonAreasPage() {
         }
       })
       .catch(() => setCondominios([]))
+    // Obtener reservaciones reales
+    fetch("/api/reservaciones")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.reservaciones)) {
+          setReservaciones(data.reservaciones)
+        }
+      })
+      .catch(() => setReservaciones([]))
   }, [])
   const [activeTab, setActiveTab] = useState("calendar")
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -137,114 +149,29 @@ export default function AdminCommonAreasPage() {
     },
   ]
 
-  // Datos simulados para lista de reservaciones
-  const allReservations = [
-    {
-      id: "res-1",
-      area: "Asador 1",
-      date: "14/06/2024",
-      time: "14:00 - 18:00",
-      user: "Carlos Mendoza",
-      payment: "pending",
-      status: "confirmed",
-    },
-    {
-      id: "res-2",
-      area: "Alberca",
-      date: "17/06/2024",
-      time: "12:00 - 16:00",
-      user: "Ana García",
-      payment: "pending",
-      status: "confirmed",
-    },
-    {
-      id: "res-3",
-      area: "SALÓN Completo",
-      date: "09/06/2024",
-      time: "16:00 - 23:00",
-      user: "Roberto Sánchez",
-      payment: "pending",
-      status: "confirmed",
-    },
-    {
-      id: "res-4",
-      area: "Terraza",
-      date: "24/06/2024",
-      time: "18:00 - 22:00",
-      user: "Laura Martínez",
-      payment: "complete",
-      status: "pending",
-    },
-    {
-      id: "res-5",
-      area: "Barra",
-      date: "29/06/2024",
-      time: "19:00 - 23:00",
-      user: "Carlos Mendoza",
-      payment: "complete",
-      status: "canceled",
-    },
-    {
-      id: "res-6",
-      area: "Asador 1",
-      date: "19/06/2024",
-      time: "12:00 - 17:00",
-      user: "Miguel Rodríguez",
-      payment: "complete",
-      status: "confirmed",
-    },
-    {
-      id: "res-7",
-      area: "Asador 1",
-      date: "20/06/2024",
-      time: "18:00 - 22:00",
-      user: "Patricia López",
-      payment: "complete",
-      status: "confirmed",
-    },
-    {
-      id: "res-8",
-      area: "Asador 2",
-      date: "21/06/2024",
-      time: "10:00 - 14:00",
-      user: "Javier Torres",
-      payment: "complete",
-      status: "confirmed",
-    },
-    {
-      id: "res-9",
-      area: "Asador 2",
-      date: "21/06/2024",
-      time: "15:00 - 20:00",
-      user: "Roberto Sánchez",
-      payment: "complete",
-      status: "confirmed",
-    },
-  ]
 
-  // Datos simulados para pagos por transferencia
-  const pendingPayments = [
-    {
-      id: "res-1",
-      area: "Asador 1",
-      date: "14/06/2024",
-      time: "14:00 - 18:00",
-      client: "Carlos Mendoza",
-      contact: "555-123-4567",
-      amount: 500,
-      reference: "TR-100000",
-    },
-    {
-      id: "res-2",
-      area: "Alberca",
-      date: "17/06/2024",
-      time: "12:00 - 16:00",
-      client: "Ana García",
-      contact: "555-234-5678",
-      amount: 1500,
-      reference: "TR-100001",
-    },
-  ]
+  // Debug: mostrar datos recibidos y filtrados
+  console.log("reservaciones recibidas de la API:", reservaciones)
+  const pagosFiltrados = reservaciones.filter((r: any) => r.tipo_pago === "Transferencia" && r.estado === "pendiente")
+  console.log("reservaciones filtradas (transferencia y pendiente):", pagosFiltrados)
+  const pendingPayments = pagosFiltrados
+    .map((r: any) => {
+      // Buscar nombre de área
+      const area = areas.find((a: any) => a.id === r.area_comun_id)
+      // Buscar nombre de usuario en reservación si existe
+      let clientName = r.nombre_usuario || r.usuario_nombre || r.usuario || r.usuario_id
+      // Si el backend no envía el nombre, mostrar el id
+      return {
+        id: r.id,
+        area: area ? (area.nombre || area.name) : r.area_comun_id,
+        date: r.fecha_reservacion,
+        time: `${r.hora_inicio} - ${r.hora_fin}`,
+        client: clientName,
+        contact: r.contacto || "-", // Si tienes campo de contacto
+        amount: r.monto_pago || r.monto || 0,
+        reference: r.referencia_transferencia || "-", // Si tienes campo de referencia
+      }
+    })
 
   // Datos simulados para depósitos reembolsables
   const refundableDeposits = [
@@ -720,45 +647,46 @@ export default function AdminCommonAreasPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {allReservations
-                        .filter(
-                          (reservation) =>
-                            (statusFilter === "all" || reservation.status === statusFilter) &&
-                            (paymentFilter === "all" || reservation.payment === paymentFilter),
-                        )
-                        .map((reservation) => (
-                          <tr key={reservation.id} className="border-b">
-                            <td className="py-3 px-4">{reservation.id}</td>
-                            <td className="py-3 px-4">{reservation.area}</td>
-                            <td className="py-3 px-4">{reservation.date}</td>
-                            <td className="py-3 px-4">{reservation.time}</td>
-                            <td className="py-3 px-4">{reservation.user}</td>
-                            <td className="py-3 px-4">
-                              {reservation.payment === "pending" ? (
-                                <Badge className="bg-yellow-500 text-white">
-                                  <Clock className="h-3 w-3 mr-1" />
-                                  Transferencia (Pendiente)
-                                </Badge>
-                              ) : (
-                                <Badge className="bg-blue-500 text-white">Completo</Badge>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              {reservation.status === "confirmed" ? (
-                                <Badge className="bg-green-500">Confirmada</Badge>
-                              ) : reservation.status === "pending" ? (
-                                <Badge className="bg-yellow-500">Pendiente</Badge>
-                              ) : (
-                                <Badge className="bg-red-500">Cancelada</Badge>
-                              )}
-                            </td>
-                            <td className="py-3 px-4">
-                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                                <FileText className="h-4 w-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
+                      {reservaciones.length === 0 ? (
+                        <tr><td colSpan={8} className="text-center py-6 text-gray-500">No hay reservaciones registradas.</td></tr>
+                      ) : (
+                        reservaciones
+                          .filter(
+                            (reservation: any) =>
+                              (statusFilter === "all" || reservation.estado === statusFilter) &&
+                              (paymentFilter === "all") // No hay campo de pago en la tabla real
+                          )
+                          .map((reservation: any) => {
+                            // Buscar nombre de área por id
+                            const area = areas.find((a: any) => a.id === reservation.area_comun_id)
+                            return (
+                              <tr key={reservation.id} className="border-b">
+                                <td className="py-3 px-4">{reservation.id}</td>
+                                <td className="py-3 px-4">{area ? area.name : reservation.area_comun_id}</td>
+                                <td className="py-3 px-4">{reservation.fecha_reservacion}</td>
+                                <td className="py-3 px-4">{reservation.hora_inicio} - {reservation.hora_fin}</td>
+                                <td className="py-3 px-4">{reservation.usuario_id}</td>
+                                <td className="py-3 px-4">-</td>
+                                <td className="py-3 px-4">
+                                  {reservation.estado === "confirmada" ? (
+                                    <Badge className="bg-green-500">Confirmada</Badge>
+                                  ) : reservation.estado === "pendiente" ? (
+                                    <Badge className="bg-yellow-500">Pendiente</Badge>
+                                  ) : reservation.estado === "cancelada" ? (
+                                    <Badge className="bg-red-500">Cancelada</Badge>
+                                  ) : (
+                                    <Badge className="bg-gray-400">{reservation.estado}</Badge>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                    <FileText className="h-4 w-4" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            )
+                          })
+                      )}
                     </tbody>
                   </table>
                 </div>

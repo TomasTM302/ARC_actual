@@ -11,6 +11,7 @@ import { es } from "date-fns/locale"
 interface ReservationModalProps {
   isOpen: boolean
   onClose: () => void
+  areaId: string
   areaName: string
   maxPeople: number
   deposit: number
@@ -21,6 +22,7 @@ interface ReservationModalProps {
 export default function ReservationModal({
   isOpen,
   onClose,
+  areaId,
   areaName,
   maxPeople,
   deposit,
@@ -33,20 +35,53 @@ export default function ReservationModal({
   const [people, setPeople] = useState<number>(4)
   const [startTime, setStartTime] = useState<string>("10:00")
   const [endTime, setEndTime] = useState<string>("14:00")
-  const [paymentMethod, setPaymentMethod] = useState<"tarjeta" | "transferencia">("tarjeta")
+  const [paymentMethod, setPaymentMethod] = useState<"Tarjeta" | "Transferencia">("Tarjeta")
 
   // Calculate max reservation date (7 days from now)
   const maxDate = addDays(new Date(), 7)
   const formattedMaxDate = format(maxDate, "d 'de' MMMM 'de' yyyy", { locale: es })
 
-  const handleContinue = () => {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  const handleContinue = async () => {
     if (step === 1) {
       setStep(2)
     } else {
-      // Here would be the logic to submit the reservation
-      alert("Reserva enviada con éxito")
-      onClose()
-      setStep(1)
+      setLoading(true)
+      setError(null)
+      setSuccess(null)
+      try {
+        const res = await fetch("/api/reservaciones", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            usuario_id: user?.id,
+            area_comun_id: areaId,
+            fecha_reservacion: format(date, "yyyy-MM-dd"),
+            hora_inicio: startTime,
+            hora_fin: endTime,
+            num_invitados: people,
+            proposito: "Reserva de área común",
+            tipo_pago: paymentMethod,
+          }),
+        })
+        const data = await res.json()
+        if (data.success) {
+          setSuccess("Reserva enviada con éxito")
+          setTimeout(() => {
+            onClose()
+            setStep(1)
+            setSuccess(null)
+          }, 1500)
+        } else {
+          setError(data.message || "Error al reservar")
+        }
+      } catch (err) {
+        setError("Error de red o servidor")
+      }
+      setLoading(false)
     }
   }
 
@@ -316,8 +351,8 @@ export default function ReservationModal({
                     <input
                       type="radio"
                       name="payment"
-                      checked={paymentMethod === "tarjeta"}
-                      onChange={() => setPaymentMethod("tarjeta")}
+                      checked={paymentMethod === "Tarjeta"}
+                      onChange={() => setPaymentMethod("Tarjeta")}
                       className="mr-2"
                     />
                     Tarjeta
@@ -326,8 +361,8 @@ export default function ReservationModal({
                     <input
                       type="radio"
                       name="payment"
-                      checked={paymentMethod === "transferencia"}
-                      onChange={() => setPaymentMethod("transferencia")}
+                      checked={paymentMethod === "Transferencia"}
+                      onChange={() => setPaymentMethod("Transferencia")}
                       className="mr-2"
                     />
                     Transferencia
@@ -371,7 +406,7 @@ export default function ReservationModal({
                   </li>
                   <li>
                     <span className="font-medium">Método de pago:</span>{" "}
-                    {paymentMethod === "tarjeta" ? "Tarjeta" : "Transferencia"}
+                    {paymentMethod === "Tarjeta" ? "Tarjeta" : "Transferencia"}
                   </li>
                 </ul>
               </div>
@@ -388,13 +423,15 @@ export default function ReservationModal({
         </div>
 
         <DialogFooter className="flex justify-between mt-4">
-          <Button variant="destructive" onClick={handleCancel} className="text-white">
+          <Button variant="destructive" onClick={handleCancel} className="text-white" disabled={loading}>
             Cancelar
           </Button>
-          <Button onClick={handleContinue} className="bg-[#0066cc] hover:bg-[#0052a3] text-white">
-            {step === 1 ? "Continuar" : "Reservar"}
+          <Button onClick={handleContinue} className="bg-[#0066cc] hover:bg-[#0052a3] text-white" disabled={loading}>
+            {loading ? "Procesando..." : step === 1 ? "Continuar" : "Reservar"}
           </Button>
         </DialogFooter>
+        {error && <div className="text-red-600 text-center mt-2">{error}</div>}
+        {success && <div className="text-green-600 text-center mt-2">{success}</div>}
       </DialogContent>
     </Dialog>
   )
