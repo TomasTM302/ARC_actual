@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -25,35 +25,54 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 
 export default function AdminCommonAreasPage() {
-  const { areas } = useCommonAreasStore()
+  // Variables simuladas para estadísticas
+  const reservationStats = {
+    total: 0,
+    confirmed: 0,
+    pending: 0,
+    canceled: 0,
+  }
+  const incomeStats = {
+    deposits: 0,
+    eventIncome: 0,
+    total: 0,
+  }
+  const userStats = {
+    total: 0,
+  }
+  const [areas, setAreas] = useState<any[]>([])
+  const [condominios, setCondominios] = useState<any[]>([])
+  // Obtener áreas comunes desde el endpoint real
+  useEffect(() => {
+    fetch("/api/areas-comunes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.areas)) {
+          setAreas(data.areas)
+        }
+      })
+      .catch(() => setAreas([]))
+    // Obtener condominios
+    fetch("/api/condominios")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.condominiums)) {
+          setCondominios(data.condominiums)
+        }
+      })
+      .catch(() => setCondominios([]))
+  }, [])
   const [activeTab, setActiveTab] = useState("calendar")
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [isEditAreaOpen, setIsEditAreaOpen] = useState(false)
-  const [selectedArea, setSelectedArea] = useState(null)
+  const [selectedArea, setSelectedArea] = useState<any>(null)
+  const [isNewArea, setIsNewArea] = useState(false)
   const [statusFilter, setStatusFilter] = useState("all")
   const [paymentFilter, setPaymentFilter] = useState("all")
   const [statusMenuOpen, setStatusMenuOpen] = useState(false)
   const [paymentMenuOpen, setPaymentMenuOpen] = useState(false)
 
-  // Datos simulados para el panel
-  const reservationStats = {
-    total: 50,
-    confirmed: 40,
-    pending: 6,
-    canceled: 4,
-  }
-
-  const incomeStats = {
-    deposits: 48900,
-    eventIncome: 14000,
-    total: 62900,
-  }
-
-  const userStats = {
-    total: 8,
-    residents: 6,
-    admins: 2,
-  }
+  // Puedes mantener los datos simulados para las estadísticas si lo deseas
 
   // Datos simulados para el calendario
   const currentMonth = "abril 2025"
@@ -256,7 +275,37 @@ export default function AdminCommonAreasPage() {
   ]
 
   const handleEditArea = (area) => {
-    setSelectedArea(area)
+    // Mapear propiedades para que coincidan con los campos del formulario
+    setSelectedArea({
+      id: area.id,
+      nombre: area.nombre || area.name || "",
+      descripcion: area.descripcion || area.description || "",
+      monto_deposito: area.monto_deposito ?? area.deposit ?? "",
+      horario_apertura: area.horario_apertura ?? "",
+      horario_cierre: area.horario_cierre ?? "",
+      capacidad: area.capacidad ?? area.capacity ?? "",
+      costo_reservacion: area.costo_reservacion ?? "",
+      activo: area.activo ?? area.isActive ?? 1,
+      requiere_deposito: area.requiere_deposito ?? 0,
+      tipo: area.tipo ?? "common",
+      condominio_id: area.condominio_id ?? "",
+    });
+    setIsNewArea(false);
+    setIsEditAreaOpen(true);
+  }
+
+  const handleAddArea = () => {
+    setSelectedArea({
+      name: "",
+      deposit: "",
+      operatingHours: "",
+      maxDuration: "",
+      capacity: "",
+      maxAdvance: "",
+      description: "",
+      isActive: true,
+    })
+    setIsNewArea(true)
     setIsEditAreaOpen(true)
   }
 
@@ -857,13 +906,52 @@ export default function AdminCommonAreasPage() {
             {/* Configuración de áreas */}
             {activeTab === "config" && (
               <div className="border rounded-lg p-6">
-                <div className="mb-6">
-                  <h3 className="text-2xl font-bold mb-2">Configuración de áreas comunes</h3>
-                  <p className="text-gray-500">Administra los parámetros de las áreas comunes</p>
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold mb-2">Configuración de áreas comunes</h3>
+                    <p className="text-gray-500">Administra los parámetros de las áreas comunes</p>
+                    <h4 className="text-xl font-semibold mt-6">Áreas disponibles</h4>
+                  </div>
+                  <Button className="bg-green-600 hover:bg-green-700 flex items-center gap-2" onClick={handleAddArea}>
+                    <span className="text-xl font-bold">+</span> Agregar nueva área
+                  </Button>
                 </div>
 
-                {/* Aquí se muestra el componente CommonAreasConfigPanel directamente */}
-                <CommonAreasConfigPanel />
+                {/* Mostrar las áreas dinámicamente */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {areas.length === 0 ? (
+                    <p className="text-gray-500 col-span-full">No hay áreas registradas.</p>
+                  ) : (
+                    areas.map((area) => (
+                      <div key={area.id} className="bg-white border rounded-lg p-6 flex flex-col shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                          <h4 className="text-xl font-bold">{area.name}</h4>
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${area.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-500'}`}>{area.isActive ? 'Habilitada' : 'Deshabilitada'}</span>
+                        </div>
+                        <div className="text-gray-600 mb-2">{area.description}</div>
+                        <div className="mb-1"><strong>Depósito:</strong> ${area.deposit}</div>
+                        <div className="mb-1"><strong>Anticipación máxima:</strong> {area.maxAdvance} días</div>
+                        <div className="mb-1"><strong>Duración máxima:</strong> {area.maxDuration} horas</div>
+                        <div className="mb-1"><strong>Horario:</strong> {area.operatingHours}</div>
+                        <div className="mb-1"><strong>Capacidad máxima:</strong> {area.capacity} personas</div>
+                        {area.simultaneousReservations !== undefined && (
+                          <div className="mb-1"><strong>Reservas simultáneas:</strong> {area.simultaneousReservations}</div>
+                        )}
+                        <div className="mt-4 flex flex-col gap-2">
+                          <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white font-semibold" onClick={() => handleEditArea(area)}>
+                            Editar
+                          </Button>
+                          <Button size="lg" className={`font-semibold ${area.isActive ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-green-600 hover:bg-green-700 text-white'}`} onClick={() => alert((area.isActive ? 'Deshabilitar' : 'Habilitar') + ' área ' + area.name)}>
+                            {area.isActive ? 'Deshabilitar' : 'Habilitar'}
+                          </Button>
+                          <Button size="lg" className="bg-gray-900 hover:bg-gray-800 text-red-500 flex items-center justify-center gap-2 font-semibold" onClick={() => alert('Eliminar área ' + area.name)}>
+                            <span className="material-icons" style={{fontSize:'18px'}}>delete</span> Eliminar
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
@@ -871,83 +959,140 @@ export default function AdminCommonAreasPage() {
 
         {/* Modal de edición de área */}
         <Dialog open={isEditAreaOpen} onOpenChange={setIsEditAreaOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>Editar {selectedArea?.name}</DialogTitle>
+              <DialogTitle className="text-2xl font-bold mb-4">
+                {isNewArea ? "Agregar área común" : `Editar ${selectedArea?.name}`}
+              </DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="name" className="text-right text-sm">
-                  Nombre:
-                </label>
-                <div className="col-span-3">
-                  <Input id="name" type="text" defaultValue={selectedArea?.name} className="w-full" />
+            <form className="space-y-4" id="area-form">
+              <div>
+                <label htmlFor="nombre" className="block text-sm font-medium mb-1">Nombre</label>
+                <input id="nombre" name="nombre" type="text" defaultValue={selectedArea?.nombre || selectedArea?.name} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" required />
+              </div>
+              <div>
+                <label htmlFor="descripcion" className="block text-sm font-medium mb-1">Descripción</label>
+                <textarea id="descripcion" name="descripcion" defaultValue={selectedArea?.descripcion || selectedArea?.description} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" rows={2} required />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="capacidad" className="block text-sm font-medium mb-1">Capacidad máxima (personas)</label>
+                  <input id="capacidad" name="capacidad" type="number" defaultValue={selectedArea?.capacidad || selectedArea?.capacity} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" required />
+                </div>
+                <div>
+                  <label htmlFor="costo_reservacion" className="block text-sm font-medium mb-1">Costo reservación ($)</label>
+                  <input id="costo_reservacion" name="costo_reservacion" type="number" step="0.01" defaultValue={selectedArea?.costo_reservacion || ""} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="deposit" className="text-right text-sm">
-                  Depósito:
-                </label>
-                <div className="col-span-3">
-                  <Input id="deposit" type="number" defaultValue={selectedArea?.deposit} className="w-full" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="horario_apertura" className="block text-sm font-medium mb-1">Horario apertura</label>
+                  <input id="horario_apertura" name="horario_apertura" type="time" defaultValue={selectedArea?.horario_apertura || ""} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" required />
+                </div>
+                <div>
+                  <label htmlFor="horario_cierre" className="block text-sm font-medium mb-1">Horario cierre</label>
+                  <input id="horario_cierre" name="horario_cierre" type="time" defaultValue={selectedArea?.horario_cierre || ""} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" required />
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="maxAdvance" className="text-right text-sm">
-                  Anticipación máxima (días):
-                </label>
-                <div className="col-span-3">
-                  <Input id="maxAdvance" type="number" defaultValue={selectedArea?.maxAdvance} className="w-full" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="requiere_deposito" className="block text-sm font-medium mb-1">¿Requiere depósito?</label>
+                  <input id="requiere_deposito" name="requiere_deposito" type="checkbox" defaultChecked={selectedArea?.requiere_deposito === 1 || selectedArea?.requiere_deposito === true} className="mr-2" />
+                </div>
+                <div>
+                  <label htmlFor="monto_deposito" className="block text-sm font-medium mb-1">Monto depósito ($)</label>
+                  <input id="monto_deposito" name="monto_deposito" type="number" step="0.01" defaultValue={selectedArea?.monto_deposito || ""} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="maxDuration" className="text-right text-sm">
-                  Duración máxima (horas):
-                </label>
-                <div className="col-span-3">
-                  <Input id="maxDuration" type="number" defaultValue={selectedArea?.maxDuration} className="w-full" />
+              {/* Select de condominio */}
+              <div>
+                <label htmlFor="condominio_id" className="block text-sm font-medium mb-1">Condominio</label>
+                <select
+                  id="condominio_id"
+                  name="condominio_id"
+                  defaultValue={selectedArea?.condominio_id || ""}
+                  className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200"
+                  required
+                >
+                  <option value="" disabled>Selecciona un condominio</option>
+                  {condominios.map((condo) => (
+                    <option key={condo.id} value={condo.id}>{condo.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="activo" className="block text-sm font-medium mb-1">¿Área activa?</label>
+                  <input id="activo" name="activo" type="checkbox" defaultChecked={selectedArea?.activo === 1 || selectedArea?.activo === true || selectedArea?.isActive === true} className="mr-2" />
                 </div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="schedule" className="text-right text-sm">
-                  Horario:
-                </label>
-                <div className="col-span-3">
-                  <Input id="schedule" type="text" defaultValue={selectedArea?.schedule} className="w-full" />
-                </div>
+              <div>
+                <label htmlFor="tipo" className="block text-sm font-medium mb-1">Tipo</label>
+                <input id="tipo" name="tipo" type="text" defaultValue={selectedArea?.tipo || "common"} className="w-full rounded-lg bg-gray-100 px-4 py-2 text-base border border-gray-200" readOnly />
               </div>
-              {selectedArea?.capacity !== null && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="capacity" className="text-right text-sm">
-                    Capacidad máxima:
-                  </label>
-                  <div className="col-span-3">
-                    <Input id="capacity" type="number" defaultValue={selectedArea?.capacity} className="w-full" />
-                  </div>
-                </div>
-              )}
-              {selectedArea?.simultaneousReservations !== null && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <label htmlFor="simultaneousReservations" className="text-right text-sm">
-                    Reservas simultáneas:
-                  </label>
-                  <div className="col-span-3">
-                    <Input
-                      id="simultaneousReservations"
-                      type="number"
-                      defaultValue={selectedArea?.simultaneousReservations}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditAreaOpen(false)}>
+            </form>
+            <div className="flex justify-end gap-4 mt-6">
+              <Button variant="outline" className="bg-red-500 text-white hover:bg-red-600 px-6 py-2 font-semibold rounded-lg" onClick={() => setIsEditAreaOpen(false)}>
                 Cancelar
               </Button>
-              <Button className="bg-blue-600 hover:bg-blue-700">Guardar cambios</Button>
-            </DialogFooter>
+              <Button
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 font-semibold rounded-lg"
+                onClick={async (e) => {
+                  e.preventDefault();
+                  const form = document.getElementById("area-form");
+                  if (!form) return;
+                  const fd = new FormData(form);
+                  // Construir objeto con los nombres de campo que espera el backend
+                  const areaData: any = {
+                    nombre: fd.get("nombre") || "",
+                    descripcion: fd.get("descripcion") || "",
+                    monto_deposito: fd.get("monto_deposito") ? Number(fd.get("monto_deposito")) : 0,
+                    horario_apertura: fd.get("horario_apertura") || "00:00",
+                    horario_cierre: fd.get("horario_cierre") || "00:00",
+                    capacidad: fd.get("capacidad") ? Number(fd.get("capacidad")) : 0,
+                    costo_reservacion: fd.get("costo_reservacion") ? Number(fd.get("costo_reservacion")) : 0,
+                    activo: fd.get("activo") === "on" ? 1 : 0,
+                    requiere_deposito: fd.get("requiere_deposito") === "on" ? 1 : 0,
+                    tipo: fd.get("tipo") || "common",
+                    condominio_id: fd.get("condominio_id") ? Number(fd.get("condominio_id")) : null,
+                  };
+                  // Si es edición, agregar el id
+                  if (selectedArea && selectedArea.id) {
+                    (areaData as any).id = selectedArea.id;
+                  }
+                  console.log("areaData enviado al backend:", areaData);
+                  // Validación básica
+                  if (!areaData.nombre || !areaData.descripcion || !areaData.capacidad || !areaData.horario_apertura || !areaData.horario_cierre || !areaData.condominio_id) {
+                    alert("Por favor completa todos los campos obligatorios.");
+                    return;
+                  }
+                  try {
+                    const res = await fetch("/api/areas-comunes", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify(areaData),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      if ((areaData as any).id) {
+                        // Edición: actualizar el área en el arreglo
+                        setAreas((prev) => prev.map((a) => a.id === (areaData as any).id ? { ...a, ...areaData } : a));
+                      } else {
+                        // Nueva: agregar al arreglo
+                        setAreas((prev) => [...prev, data.area]);
+                      }
+                      setIsEditAreaOpen(false);
+                    } else {
+                      alert("Error al guardar el área: " + (data.message || "Error desconocido"));
+                    }
+                  } catch (err) {
+                    alert("Error de red al guardar el área");
+                  }
+                }}
+              >
+                Guardar cambios
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </main>

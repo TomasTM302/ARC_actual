@@ -9,26 +9,26 @@ import { useAuthStore } from "@/lib/auth"
 import { ClipboardList, FileText, LogOut, User } from "lucide-react"
 import { useMediaQuery } from "@/hooks/use-media-query"
 
-export default function AuxiliarLayout({ children }: { children: React.ReactNode }) {
+export default function MantenimientoLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
-  const { logout, user, isAuthenticated, isAuxiliar } = useAuthStore()
+  const { logout, user, isAuthenticated, isMantenimiento } = useAuthStore()
   const isMobile = useMediaQuery("(max-width: 768px)")
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login")
-    } else if (!isAuxiliar) {
+    } else if (!isMantenimiento) {
       router.push("/home")
     }
-  }, [isAuthenticated, isAuxiliar, router])
+  }, [isAuthenticated, isMantenimiento, router])
 
-  // No mostrar el layout de auxiliar para páginas que no son de auxiliar
-  if (!pathname.startsWith("/auxiliar")) {
+  // No mostrar el layout de mantenimiento para páginas que no son de mantenimiento
+  if (!pathname.startsWith("/mantenimiento")) {
     return <div className="min-h-screen">{children}</div>
   }
 
-  if (!isAuthenticated || !isAuxiliar) {
+  if (!isAuthenticated || !isMantenimiento) {
     return null
   }
 
@@ -38,11 +38,11 @@ export default function AuxiliarLayout({ children }: { children: React.ReactNode
       <header className="bg-[#0e2c52] text-white shadow-md sticky top-0 z-10">
         {/* Parte superior del header con título y perfil */}
         <div className="flex justify-between items-center p-4">
-          <h1 className="text-xl font-semibold text-white">Panel Auxiliar</h1>
+          <h1 className="text-xl font-semibold text-white">Panel Mantenimiento</h1>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-sm">{user?.firstName || "Usuario"}</span>
             <div className="w-8 h-8 bg-[#1a4580] rounded-full flex items-center justify-center text-white">
-              {user?.firstName?.charAt(0) || "A"}
+              {user?.firstName?.charAt(0) || "M"}
             </div>
           </div>
         </div>
@@ -50,22 +50,22 @@ export default function AuxiliarLayout({ children }: { children: React.ReactNode
         {/* Navbar con los enlaces que estaban en el sidebar */}
         <nav className="flex bg-[#1a4580]">
           <NavLink
-            href="/auxiliar"
+            href="/mantenimiento"
             icon={<ClipboardList size={isMobile ? 18 : 20} />}
-            label="Mis Tareas"
-            isActive={pathname === "/auxiliar"}
+            label="Tareas de Mantenimiento"
+            isActive={pathname === "/mantenimiento"}
           />
           <NavLink
-            href="/auxiliar/reportes"
+            href="/mantenimiento/reportes"
             icon={<FileText size={isMobile ? 18 : 20} />}
-            label="Mis Reportes"
-            isActive={pathname === "/auxiliar/reportes"}
+            label="Reportes"
+            isActive={pathname === "/mantenimiento/reportes"}
           />
           <NavLink
-            href="/auxiliar/perfil"
+            href="/mantenimiento/perfil"
             icon={<User size={isMobile ? 18 : 20} />}
             label="Mi Perfil"
-            isActive={pathname === "/auxiliar/perfil"}
+            isActive={pathname === "/mantenimiento/perfil"}
           />
           <button
             onClick={logout}
@@ -84,17 +84,17 @@ export default function AuxiliarLayout({ children }: { children: React.ReactNode
       <footer className="fixed bottom-0 left-0 right-0 bg-[#0e2c52] border-t border-[#1a4580] py-2 px-4 z-10 md:hidden">
         <div className="flex justify-around items-center">
           <Link
-            href="/auxiliar"
-            className={`flex flex-col items-center ${pathname === "/auxiliar" ? "text-white" : "text-gray-400"}`}
+            href="/mantenimiento"
+            className={`flex flex-col items-center ${pathname === "/mantenimiento" ? "text-white" : "text-gray-400"}`}
           >
             <ClipboardList size={24} />
             <span className="text-xs font-medium mt-1">Tareas</span>
           </Link>
 
           <Link
-            href="/auxiliar/reportes"
+            href="/mantenimiento/reportes"
             className={`flex flex-col items-center ${
-              pathname === "/auxiliar/reportes" ? "text-white" : "text-gray-400"
+              pathname === "/mantenimiento/reportes" ? "text-white" : "text-gray-400"
             }`}
           >
             <FileText size={24} />
@@ -102,8 +102,8 @@ export default function AuxiliarLayout({ children }: { children: React.ReactNode
           </Link>
 
           <Link
-            href="/auxiliar/perfil"
-            className={`flex flex-col items-center ${pathname === "/auxiliar/perfil" ? "text-white" : "text-gray-400"}`}
+            href="/mantenimiento/perfil"
+            className={`flex flex-col items-center ${pathname === "/mantenimiento/perfil" ? "text-white" : "text-gray-400"}`}
           >
             <User size={24} />
             <span className="text-xs font-medium mt-1">Perfil</span>

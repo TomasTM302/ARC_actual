@@ -301,6 +301,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           priority: "high",
           status: "pending",
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
           dueDate: new Date(Date.now() + 86400000).toISOString(), // Mañana
         },
         {
@@ -310,6 +311,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           priority: "medium",
           status: "in-progress",
           createdAt: new Date(Date.now() - 172800000).toISOString(), // Hace 2 días
+          updatedAt: new Date().toISOString(),
           dueDate: new Date(Date.now() + 604800000).toISOString(), // En una semana
         },
         {
@@ -319,6 +321,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           priority: "high",
           status: "completed",
           createdAt: new Date(Date.now() - 345600000).toISOString(), // Hace 4 días
+          updatedAt: new Date().toISOString(),
           completedAt: new Date(Date.now() - 86400000).toISOString(), // Ayer
         },
         {
@@ -328,6 +331,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           priority: "medium",
           status: "pending",
           createdAt: new Date(Date.now() - 259200000).toISOString(), // Hace 3 días
+          updatedAt: new Date().toISOString(),
           dueDate: new Date(Date.now() + 345600000).toISOString(), // En 4 días
         },
         {
@@ -337,6 +341,7 @@ export const useAppStore = create<AppState>()((set, get) => ({
           priority: "low",
           status: "in-progress",
           createdAt: new Date(Date.now() - 432000000).toISOString(), // Hace 5 días
+          updatedAt: new Date().toISOString(),
           dueDate: new Date(Date.now() + 172800000).toISOString(), // En 2 días
         },
       ],
@@ -444,7 +449,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           title: "Actualización de fecha límite de pago",
           description: `La fecha límite de pago de mantenimiento ha sido actualizada al día ${validDueDay} de cada mes. Efectiva a partir de ahora.`,
           type: "maintenance",
-          notes,
         })
       },
 
@@ -462,7 +466,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           title: "Actualización de recargo por pago tardío",
           description: `El recargo por pago tardío de mantenimiento ha sido actualizado a ${newFee.toLocaleString()}. Efectivo a partir de ahora.`,
           type: "maintenance",
-          notes,
         })
       },
 
@@ -605,5 +608,4 @@ export const useAppStore = create<AppState>()((set, get) => ({
         set((state) => ({
           adminTasks: state.adminTasks.filter((task) => task.id !== id),
         })),
-    }),
-))
+    }));

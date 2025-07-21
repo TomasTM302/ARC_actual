@@ -19,32 +19,6 @@ interface NewReportModalProps {
   preselectedCondominium?: string
 }
 
-const SECTIONS = [
-  "Torre A",
-  "Torre B",
-  "Torre C",
-  "Área Común",
-  "Estacionamiento",
-  "Jardines",
-  "Alberca",
-  "Gimnasio",
-  "Salón de eventos",
-]
-
-const CONDOMINIUMS = [
-  "Condominio 1-Los Arcos",
-  "Condominio 2-Las Palmas",
-  "Condominio 3-Vista Hermosa",
-  "Condominio 4-El Mirador",
-]
-
-const CONDOMINIUM_ID_MAP: Record<string, string> = {
-  "condo-1": "Condominio 1-Los Arcos",
-  "condo-2": "Condominio 2-Las Palmas",
-  "condo-3": "Condominio 3-Vista Hermosa",
-  "condo-4": "Condominio 4-El Mirador",
-}
-
 export default function NewReportModal({ isOpen, onClose, preselectedCondominium }: NewReportModalProps) {
   const { addReport } = useMantenimientoTasksStore()
   const { user } = useAuthStore()
@@ -55,33 +29,80 @@ export default function NewReportModal({ isOpen, onClose, preselectedCondominium
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [images, setImages] = useState<string[]>([])
   const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [condominiums, setCondominiums] = useState<any[]>([])
+  const [sections, setSections] = useState<string[]>([])
 
   const pathname = usePathname()
 
+  // Fetch condominios desde la API
+  useEffect(() => {
+    if (isOpen) {
+      fetch("/api/condominios")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success && Array.isArray(data.condominiums)) {
+            setCondominiums(data.condominiums)
+          }
+        })
+        .catch(() => setCondominiums([]))
+    }
+  }, [isOpen])
+
+  // Lógica de preselección y mapeo
   useEffect(() => {
     if (isOpen) {
       if (preselectedCondominium) {
-        const mappedCondominium = CONDOMINIUM_ID_MAP[preselectedCondominium]
-        if (mappedCondominium) {
-          setCondominium(mappedCondominium)
-        } else if (CONDOMINIUMS.includes(preselectedCondominium)) {
-          setCondominium(preselectedCondominium)
+        // Buscar por id o nombre
+        const found = condominiums.find(
+          (c) => c.id === preselectedCondominium || c.name === preselectedCondominium || c.nombre === preselectedCondominium
+        )
+        if (found) {
+          setCondominium(found.name || found.nombre)
+        } else {
+          setCondominium("")
         }
       } else {
         const pathSegments = pathname.split("/")
-        const condoIndex = pathSegments.findIndex((segment) => segment.startsWith("condo-"))
-        if (condoIndex !== -1) {
-          const condoId = pathSegments[condoIndex]
-          const mappedCondominium = CONDOMINIUM_ID_MAP[condoId]
-          if (mappedCondominium) {
-            setCondominium(mappedCondominium)
+        const condoId = pathSegments.find((segment) => segment.startsWith("condo-"))
+        if (condoId) {
+          const found = condominiums.find((c) => c.id === condoId)
+          if (found) {
+            setCondominium(found.name || found.nombre)
+          } else {
+            setCondominium("")
           }
         } else {
           setCondominium("")
         }
       }
     }
-  }, [preselectedCondominium, isOpen, pathname])
+  }, [preselectedCondominium, isOpen, pathname, condominiums])
+
+  // Fetch secciones dinámicamente según el condominio seleccionado
+  useEffect(() => {
+    if (condominium) {
+      // Buscar el id del condominio seleccionado
+      const selected = condominiums.find(
+        (c) => c.name === condominium || c.nombre === condominium
+      )
+      if (selected && selected.id) {
+        fetch(`/api/secciones?condominio_id=${selected.id}`)
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.success && Array.isArray(data.secciones)) {
+              setSections(data.secciones.map((s: any) => s.nombre))
+            } else {
+              setSections([])
+            }
+          })
+          .catch(() => setSections([]))
+      } else {
+        setSections([])
+      }
+    } else {
+      setSections([])
+    }
+  }, [condominium, condominiums])
 
   useEffect(() => {
     if (!isOpen) {
@@ -123,8 +144,8 @@ export default function NewReportModal({ isOpen, onClose, preselectedCondominium
     addReport({
       title: title.trim(),
       description: description.trim(),
-      auxiliarId: user.id, // puedes renombrar a mantenimientoId si lo deseas
-      auxiliarName: `${user.firstName} ${user.lastName}`,
+      mantenimientoId: user.id, // nombre correcto según la interfaz Report
+      mantenimientoName: `${user.firstName} ${user.lastName}`,
       images: images,
       status: "pending",
       section: section,
@@ -134,7 +155,7 @@ export default function NewReportModal({ isOpen, onClose, preselectedCondominium
     setTitle("")
     setDescription("")
     setSection("")
-    setCondominium(preselectedCondominium ? CONDOMINIUM_ID_MAP[preselectedCondominium] || preselectedCondominium : "")
+    setCondominium(preselectedCondominium ? preselectedCondominium : "")
     setImages([])
     setPreviewImages([])
     onClose()
@@ -182,17 +203,17 @@ export default function NewReportModal({ isOpen, onClose, preselectedCondominium
               required
               disabled={isCondominiumDisabled}
             >
-              {!preselectedCondominium && !pathname.includes("/condo-") && (
+              {!isCondominiumDisabled && (
                 <option value="">Seleccionar condominio</option>
               )}
-              {preselectedCondominium || pathname.includes("/condo-") ? (
+              {isCondominiumDisabled ? (
                 <option key={condominium} value={condominium}>
                   {condominium}
                 </option>
               ) : (
-                CONDOMINIUMS.map((condo) => (
-                  <option key={condo} value={condo}>
-                    {condo}
+                condominiums.map((condo) => (
+                  <option key={condo.id} value={condo.name || condo.nombre}>
+                    {condo.name || condo.nombre}
                   </option>
                 ))
               )}
@@ -210,7 +231,7 @@ export default function NewReportModal({ isOpen, onClose, preselectedCondominium
               required
             >
               <option value="">Seleccionar sección</option>
-              {SECTIONS.map((sect) => (
+              {sections.map((sect) => (
                 <option key={sect} value={sect}>
                   {sect}
                 </option>

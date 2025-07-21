@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Utensils, Waves, GlassWater, Users, Clock, Calendar, Info } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,12 +8,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuthStore } from "@/lib/auth"
 import AuthGuard from "@/components/auth-guard"
 import ReservationModal from "@/components/reservation-modal"
-import { useCommonAreasStore } from "@/lib/common-areas-store"
 
 export default function ReservaAreasPage() {
   const [activeTab, setActiveTab] = useState("uso-comun")
   const { user } = useAuthStore()
-  const { areas } = useCommonAreasStore()
+
+  // Estado para áreas comunes
+  const [areas, setAreas] = useState<any[]>([])
 
   // State for reservation modal
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -25,22 +26,34 @@ export default function ReservaAreasPage() {
     maxDuration: 0,
   })
 
+  // Obtener áreas comunes desde la API
+  useEffect(() => {
+    fetch("/api/areas-comunes")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.areas)) {
+          setAreas(data.areas)
+        }
+      })
+      .catch(() => setAreas([]))
+  }, [])
+
   const handleReserveClick = (areaId: string) => {
     const area = areas.find((a) => a.id === areaId)
-    if (area && area.isActive) {
+    if (area && area.isActive !== false) {
       setSelectedArea({
         name: area.name,
-        maxPeople: area.maxPeople,
+        maxPeople: area.maxPeople || area.capacity || 0,
         deposit: area.deposit,
-        operatingHours: area.operatingHours,
+        operatingHours: area.operatingHours || area.schedule || "",
         maxDuration: area.maxDuration,
       })
       setIsModalOpen(true)
     }
   }
 
-  const commonAreas = areas.filter((area) => area.type === "common")
-  const privateAreas = areas.filter((area) => area.type === "private")
+  const commonAreas = areas.filter((area) => area.type === "common" || area.tipo === "common")
+  const privateAreas = areas.filter((area) => area.type === "private" || area.tipo === "private")
 
   const getIconComponent = (iconName: string) => {
     switch (iconName) {
