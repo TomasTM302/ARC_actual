@@ -28,11 +28,11 @@ export async function GET() {
       capacity: row.capacity,
       deposit: row.monto_deposito,
       operatingHours: `${row.horario_apertura} - ${row.horario_cierre}`,
-      maxDuration: row.costo_reservacion, // Puedes ajustar si tienes un campo específico para duración
+      maxDuration: row.costo_reservacion,
       imageUrl: row.imagen_url,
-      isActive: row.activo === 1,
-      type: "common", // Campo agregado para que el frontend lo detecte
-      // Puedes agregar más campos si los necesitas
+      isActive: row.activo === 'Activo',
+      activo: row.activo, // Devolver el valor real para el frontend
+      type: "common",
     })) : []
     return NextResponse.json({ success: true, areas })
   } catch (err) {
@@ -61,8 +61,16 @@ export async function POST(req: Request) {
   } = data
 
   try {
+    // Determinar valor correcto para ENUM
+    let activoEnum = 'Activo';
+    if (typeof activo === 'string') {
+      activoEnum = activo === 'Inactivo' ? 'Inactivo' : 'Activo';
+    } else if (activo === 0 || activo === false) {
+      activoEnum = 'Inactivo';
+    }
+
     if (id) {
-      // Actualizar área existente (ajustar si es necesario)
+      // Actualizar área existente
       await pool.execute(
         `UPDATE areas_comunes SET nombre=?, descripcion=?, monto_deposito=?, horario_apertura=?, horario_cierre=?, capacidad=?, costo_reservacion=?, activo=?, requiere_deposito=?, tipo=?, condominio_id=? WHERE id=?`,
         [
@@ -73,7 +81,7 @@ export async function POST(req: Request) {
           horario_cierre,
           capacidad,
           costo_reservacion,
-          activo ? 1 : 0,
+          activoEnum,
           requiere_deposito ? 1 : 0,
           tipo,
           condominio_id,
@@ -93,7 +101,7 @@ export async function POST(req: Request) {
           horario_cierre,
           capacidad,
           costo_reservacion,
-          activo ? 1 : 0,
+          activoEnum,
           requiere_deposito ? 1 : 0,
           tipo,
           condominio_id
@@ -106,6 +114,12 @@ export async function POST(req: Request) {
     }
   } catch (err) {
     console.error('Error al guardar área común:', err);
-    return NextResponse.json({ success: false, message: `Error al guardar área común: ${err && err.message ? err.message : err}` }, { status: 500 })
+    let msg = 'Error desconocido';
+    if (err && typeof err === 'object' && 'message' in err) {
+      msg = (err as any).message;
+    } else if (typeof err === 'string') {
+      msg = err;
+    }
+    return NextResponse.json({ success: false, message: `Error al guardar área común: ${msg}` }, { status: 500 })
   }
 }

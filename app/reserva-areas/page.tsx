@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Utensils, Waves, GlassWater, Users, Clock, Calendar, Info } from "lucide-react"
+import { Coins } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useAuthStore } from "@/lib/auth"
@@ -139,13 +140,13 @@ export default function ReservaAreasPage() {
                         )}
 
                         <div className="w-full border-t pt-4 mt-auto">
-                          <h4 className="font-semibold text-lg mb-2">Depósito reembolsable: ${area.deposit}</h4>
+                          <h4 className="font-semibold text-lg mb-2">Costo de la Reserva: $ {area.maxDuration}</h4>
                           <div className="space-y-1 text-sm text-gray-600 mb-4">
                             <div className="flex items-center">
                               <Calendar className="h-4 w-4 mr-2 text-gray-400" />
                               <span>
                                 Reservación con máximo {area.maxAdvanceBookingDays}{" "}
-                                {area.maxAdvanceBookingDays === 1 ? "día" : "días"} de anticipación
+                                {area.maxAdvanceBookingDays === 1 ? "7 día" : " 7 días"} de anticipación
                               </span>
                             </div>
                             <div className="flex items-center">
@@ -153,8 +154,8 @@ export default function ReservaAreasPage() {
                               <span>Horario: {area.operatingHours}</span>
                             </div>
                             <div className="flex items-center">
-                              <Clock className="h-4 w-4 mr-2 text-gray-400" />
-                              <span>Duración máxima: {area.maxDuration} horas</span>
+                              <Coins className="h-4 w-4 mr-2 text-gray-400" />
+                              <span>Depósito reembolsable:{area.deposit}</span>
                             </div>
                             <div className="flex items-center">
                               <Users className="h-4 w-4 mr-2 text-gray-400" />

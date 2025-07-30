@@ -17,7 +17,20 @@ import DeleteNoticeModal from "@/components/delete-notice-modal"
 import type { Notice } from "@/lib/store"
 
 export default function AvisosPage() {
-  const { notices, markNoticeAsRead } = useAppStore()
+  // const { notices, markNoticeAsRead } = useAppStore()
+  const [notices, setNotices] = useState<any[]>([])
+  // Obtener avisos desde la API SQL
+  useEffect(() => {
+    fetch("/api/avisos")
+      .then((res) => res.json())
+      .then((data) => {
+        // La API devuelve avisos con campos: id, titulo, contenido, autor_id, condominio_id, fecha_publicacion, fecha_expiracion, imagen_url, importante
+        if (data.success && Array.isArray(data.avisos)) setNotices(data.avisos)
+        else setNotices([])
+      })
+      .catch(() => setNotices([]))
+  }, [])
+  // markNoticeAsRead ya no aplica
   const { isAdmin } = useAuthStore()
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -28,6 +41,7 @@ export default function AvisosPage() {
     console.log("Parámetro 'from':", from)
   }, [from])
   const [showSuccess, setShowSuccess] = useState(false)
+  const [deleteSuccess, setDeleteSuccess] = useState(false)
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
@@ -45,11 +59,9 @@ export default function AvisosPage() {
 
   const getNoticeIcon = (type: string) => {
     switch (type) {
-      case "pet":
-        return <Paw className="h-5 w-5 text-blue-500" />
-      case "emergency":
+      case "emergencia":
         return <AlertTriangle className="h-5 w-5 text-red-500" />
-      case "maintenance":
+      case "mantenimiento":
         return <Wrench className="h-5 w-5 text-yellow-500" />
       default:
         return <Bell className="h-5 w-5 text-gray-500" />
@@ -60,20 +72,16 @@ export default function AvisosPage() {
     if (!isRead) return "bg-blue-50"
 
     switch (type) {
-      case "pet":
-        return "hover:bg-blue-50"
-      case "emergency":
+      case "emergencia":
         return "hover:bg-red-50"
-      case "maintenance":
+      case "mantenimiento":
         return "hover:bg-yellow-50"
       default:
         return "hover:bg-gray-50"
     }
   }
 
-  const handleNoticeClick = (id: string) => {
-    markNoticeAsRead(id)
-  }
+  // No se requiere lógica de "leído", los avisos se mantienen hasta expiración o eliminación.
 
   const handleEditClick = (e: React.MouseEvent, notice: Notice) => {
     e.preventDefault()
@@ -85,12 +93,41 @@ export default function AvisosPage() {
   const handleDeleteClick = (e: React.MouseEvent, notice: Notice) => {
     e.preventDefault()
     e.stopPropagation()
-    setSelectedNotice(notice)
-    setIsDeleteModalOpen(true)
+    // Doble verificación
+    const seguro = window.confirm("¿Estás seguro de que quieres eliminar este aviso? Esta acción no se puede deshacer.");
+    if (!seguro) return;
+    // Actualizar fecha de expiración en la base de datos
+    const hoy = new Date();
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    const fechaHoy = `${hoy.getFullYear()}-${pad(hoy.getMonth()+1)}-${pad(hoy.getDate())} ${pad(hoy.getHours())}:${pad(hoy.getMinutes())}:${pad(hoy.getSeconds())}`;
+    fetch(`/api/avisos/${notice.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fecha_expiracion: fechaHoy })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setNotices(prev => prev.filter(n => n.id !== notice.id))
+          setDeleteSuccess(true)
+          setTimeout(() => setDeleteSuccess(false), 4000)
+        }
+      })
+      .catch(() => {/* opcional: mostrar error */})
+    setSelectedNotice(null)
+    setIsDeleteModalOpen(false)
   }
 
   // Determinar la URL de retorno basada en el parámetro "from"
   const backUrl = from === "admin" ? "/admin" : "/home"
+
+  // Filtrar avisos expirados
+  const avisosVigentes = notices.filter((notice) => {
+    if (!notice.fecha_expiracion) return true;
+    const ahora = new Date();
+    const expiracion = new Date(notice.fecha_expiracion);
+    return expiracion >= ahora;
+  });
 
   return (
     <main className="flex min-h-screen flex-col bg-[#0e2c52] pb-20">
@@ -125,45 +162,47 @@ export default function AvisosPage() {
               <span className="block sm:inline">Tu reporte de mascota extraviada ha sido publicado.</span>
             </div>
           )}
+          {deleteSuccess && (
+            <div
+              className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6"
+              role="alert"
+            >
+              <strong className="font-bold">Aviso eliminado correctamente.</strong>
+            </div>
+          )}
 
-          {notices.length === 0 ? (
+          {avisosVigentes.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <Bell className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p>No hay avisos disponibles en este momento.</p>
             </div>
           ) : (
             <ul className="space-y-4">
-              {notices.map((notice) => (
+              {avisosVigentes.map((notice) => (
                 <li key={notice.id}>
                   <Link
                     href={`/avisos/${notice.id}`}
-                    onClick={() => handleNoticeClick(notice.id)}
-                    className={`block border rounded-lg p-4 transition-colors ${
-                      notice.isRead ? getNoticeBgColor(notice.type, true) : getNoticeBgColor(notice.type, false)
-                    } relative`}
+                    className="block border rounded-lg p-4 transition-colors hover:bg-gray-50 relative"
                   >
                     <div className="flex items-start">
-                      <div className="mr-3 mt-0.5">{getNoticeIcon(notice.type)}</div>
+                      <div className="mr-3 mt-0.5">{getNoticeIcon(notice.importante || "general")}</div>
                       <div className="flex-1">
-                        <h3 className="font-medium text-gray-900">{notice.title}</h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">{notice.description}</p>
+                        <h3 className="font-medium text-gray-900">{notice.titulo}</h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">{notice.contenido}</p>
                         <p className="text-xs text-gray-500 mt-1">
-                          {format(new Date(notice.createdAt), "d 'de' MMMM, yyyy - HH:mm", { locale: es })}
+                          {notice.fecha_publicacion ? format(new Date(notice.fecha_publicacion), "d 'de' MMMM, yyyy - HH:mm", { locale: es }) : ""}
                         </p>
-
-                        {notice.imageUrl && (
+                        {notice.imagen_url && (
                           <div className="mt-2">
                             <img
-                              src={notice.imageUrl || "/placeholder.svg"}
+                              src={notice.imagen_url || "/placeholder.svg"}
                               alt="Imagen del aviso"
                               className="h-20 object-cover rounded-md"
                             />
                           </div>
                         )}
                       </div>
-                      {!notice.isRead && <span className="h-2 w-2 bg-blue-500 rounded-full flex-shrink-0 mt-2"></span>}
                     </div>
-
                     {/* Botones de edición y eliminación para administradores (solo si viene del panel admin) */}
                     {isAdmin && from === "admin" && (
                       <div className="absolute top-2 right-2 flex space-x-2">

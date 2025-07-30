@@ -1,8 +1,9 @@
 "use client"
 
-import type React from "react"
+import React from "react"
 
 import { useState, useRef } from "react"
+import { useAuthStore } from "@/lib/auth"
 import { X, Bell, AlertTriangle, Wrench, Save, ImageIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAppStore } from "@/lib/store"
@@ -13,14 +14,28 @@ interface CreateNoticeModalProps {
 }
 
 export default function CreateNoticeModal({ isOpen, onClose }: CreateNoticeModalProps) {
-  const { addNotice } = useAppStore()
+  // const { addNotice } = useAppStore() // Eliminado
+  const { user } = useAuthStore()
+  const [condominios, setCondominios] = useState<any[]>([])
+  const [selectedCondominio, setSelectedCondominio] = useState<string>("")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    type: "general",
+    type: "general", // 'general', 'emergencia', 'mantenimiento'
+    fecha_expiracion: "",
   })
+  // Obtener lista de condominios al abrir el modal
+  React.useEffect(() => {
+    if (isOpen) {
+      fetch("/api/condominios")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) setCondominios(data.condominiums)
+        })
+    }
+  }, [isOpen])
   const [image, setImage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -31,6 +46,7 @@ export default function CreateNoticeModal({ isOpen, onClose }: CreateNoticeModal
       ...prev,
       [id]: value,
     }))
+    if (id === "condominio") setSelectedCondominio(value)
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -61,51 +77,110 @@ export default function CreateNoticeModal({ isOpen, onClose }: CreateNoticeModal
     setIsSubmitting(true)
     setError(null)
 
-    try {
-      // Validar campos
-      if (!formData.title.trim()) {
-        throw new Error("El título es obligatorio")
+    const uploadImage = async (): Promise<string | undefined> => {
+      if (!fileInputRef.current || !fileInputRef.current.files?.[0]) return undefined;
+      const file = fileInputRef.current.files[0];
+      const form = new FormData();
+      form.append("file", file);
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: form,
+        });
+        const data = await res.json();
+        if (data.success && data.url) {
+          return data.url;
+        } else {
+          setError(data.message || "Error al subir la imagen");
+          return undefined;
+        }
+      } catch (err) {
+        setError("Error de red al subir la imagen");
+        return undefined;
       }
+    };
 
-      if (!formData.description.trim()) {
-        throw new Error("La descripción es obligatoria")
+    (async () => {
+      try {
+        // Validar campos
+        if (!formData.title.trim()) {
+          throw new Error("El título es obligatorio");
+        }
+        if (!formData.description.trim()) {
+          throw new Error("La descripción es obligatoria");
+        }
+
+        let imageUrl: string | undefined = undefined;
+        if (fileInputRef.current && fileInputRef.current.files?.[0]) {
+          imageUrl = await uploadImage();
+        }
+
+        // Aquí debes obtener autor_id y condominio_id según tu contexto de usuario
+        // Formatear fecha de publicación para MySQL
+        const now = new Date();
+        const pad = (n: number) => n.toString().padStart(2, '0');
+        const fecha_publicacion = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+        // Usar fecha de expiración si se seleccionó
+        let fecha_expiracion = null;
+        if (formData.fecha_expiracion) {
+          const exp = new Date(formData.fecha_expiracion);
+          fecha_expiracion = `${exp.getFullYear()}-${pad(exp.getMonth()+1)}-${pad(exp.getDate())} 23:59:59`;
+        }
+
+        // Mapear el tipo a español
+        let tipoAviso = formData.type;
+        if (tipoAviso === "emergency") tipoAviso = "emergencia";
+        if (tipoAviso === "maintenance") tipoAviso = "mantenimiento";
+        // 'general' ya está en español
+        const avisoPayload = {
+          titulo: formData.title,
+          contenido: formData.description,
+          autor_id: user?.id || null,
+          condominio_id: selectedCondominio,
+          fecha_publicacion,
+          fecha_expiracion,
+          imagen_url: imageUrl,
+          importante: tipoAviso,
+        };
+        console.log("Payload enviado a /api/avisos:", avisoPayload);
+
+        const res = await fetch("/api/avisos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(avisoPayload),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || "Error al guardar el aviso");
+
+        // Limpiar formulario y cerrar modal
+        setFormData({
+          title: "",
+          description: "",
+          type: "general",
+          fecha_expiracion: "",
+        });
+        setImage(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        onClose();
+      } catch (error) {
+        if (error instanceof Error) {
+          setError(error.message);
+        } else {
+          setError("Ocurrió un error al crear el aviso");
+        }
+      } finally {
+        setIsSubmitting(false);
       }
-
-      // Crear aviso
-      addNotice({
-        title: formData.title,
-        description: formData.description,
-        type: formData.type as "general" | "emergency" | "maintenance" | "pet",
-        imageUrl: image || undefined,
-      })
-
-      // Limpiar formulario y cerrar modal
-      setFormData({
-        title: "",
-        description: "",
-        type: "general",
-      })
-      setImage(null)
-      onClose()
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message)
-      } else {
-        setError("Ocurrió un error al crear el aviso")
-      }
-    } finally {
-      setIsSubmitting(false)
-    }
+    })();
   }
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "emergency":
+      case "emergencia":
         return <AlertTriangle className="h-5 w-5 text-red-500" />
-      case "maintenance":
+      case "mantenimiento":
         return <Wrench className="h-5 w-5 text-yellow-500" />
-      case "pet":
-        return <Bell className="h-5 w-5 text-blue-500" />
       default:
         return <Bell className="h-5 w-5 text-blue-500" />
     }
@@ -130,6 +205,31 @@ export default function CreateNoticeModal({ isOpen, onClose }: CreateNoticeModal
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label htmlFor="fecha_expiracion" className="block text-sm font-medium">Fecha de expiración (opcional)</label>
+          <input
+            type="date"
+            id="fecha_expiracion"
+            value={formData.fecha_expiracion}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#3b6dc7] text-gray-800"
+          />
+        </div>
+        <div className="space-y-2">
+          <label htmlFor="condominio" className="block text-sm font-medium">Condominio</label>
+          <select
+            id="condominio"
+            value={selectedCondominio}
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#3b6dc7] text-gray-800"
+            required
+          >
+            <option value="">Selecciona un condominio</option>
+            {condominios.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.nombre}</option>
+            ))}
+          </select>
+        </div>
           <div className="space-y-2">
             <label htmlFor="type" className="block text-sm font-medium">
               Tipo de aviso
@@ -143,8 +243,8 @@ export default function CreateNoticeModal({ isOpen, onClose }: CreateNoticeModal
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#3b6dc7] text-gray-800"
               >
                 <option value="general">General</option>
-                <option value="emergency">Emergencia</option>
-                <option value="maintenance">Mantenimiento</option>
+                <option value="emergencia">Emergencia</option>
+                <option value="mantenimiento">Mantenimiento</option>
               </select>
             </div>
           </div>

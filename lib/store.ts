@@ -19,16 +19,6 @@ export interface PetReport {
   createdAt: string
 }
 
-export interface Notice {
-  id: string
-  title: string
-  description: string
-  type: "pet" | "general" | "emergency" | "maintenance"
-  relatedId?: string
-  imageUrl?: string
-  createdAt: string
-  isRead: boolean
-}
 
 // Nuevo modelo para comercios cercanos
 export interface NearbyBusiness {
@@ -96,7 +86,6 @@ export interface AdminTask {
 // Actualizar la interfaz AppState para incluir datos bancarios
 interface AppState {
   petReports: PetReport[]
-  notices: Notice[]
   // Precio actual de mantenimiento
   maintenancePrice: number
   // Fecha límite de pago (día del mes)
@@ -114,10 +103,8 @@ interface AppState {
   // Estado para tareas administrativas
   adminTasks: AdminTask[]
   addPetReport: (report: Omit<PetReport, "id" | "createdAt">) => string
-  addNotice: (notice: Omit<Notice, "id" | "createdAt" | "isRead">) => string
   markNoticeAsRead: (id: string) => void
   deleteNotice: (id: string) => void
-  updateNotice: (id: string, updatedNotice: Partial<Omit<Notice, "id" | "createdAt">>) => void
   getPetReportById: (id: string) => PetReport | undefined
   // Función para actualizar el precio de mantenimiento
   updateMaintenancePrice: (newPrice: number, userId: string, notes?: string) => void
@@ -146,7 +133,6 @@ interface AppState {
 // Actualizar el estado inicial y las funciones
 export const useAppStore = create<AppState>()((set, get) => ({
       petReports: [],
-      notices: [],
       // Precio inicial de mantenimiento
       maintenancePrice: 1500,
       // Día de pago predeterminado (día 10 de cada mes)
@@ -363,40 +349,14 @@ export const useAppStore = create<AppState>()((set, get) => ({
         return id
       },
 
-      addNotice: (notice) => {
-        const id = `notice-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`
-        const createdAt = new Date().toISOString()
-
-        const newNotice = {
-          ...notice,
-          id,
-          createdAt,
-          isRead: false,
-        }
-
-        set((state) => ({
-          notices: [newNotice, ...state.notices],
-        }))
-
-        return id
-      },
 
       markNoticeAsRead: (id) => {
-        set((state) => ({
-          notices: state.notices.map((notice) => (notice.id === id ? { ...notice, isRead: true } : notice)),
-        }))
       },
 
       deleteNotice: (id) => {
-        set((state) => ({
-          notices: state.notices.filter((notice) => notice.id !== id),
-        }))
       },
 
       updateNotice: (id, updatedNotice) => {
-        set((state) => ({
-          notices: state.notices.map((notice) => (notice.id === id ? { ...notice, ...updatedNotice } : notice)),
-        }))
       },
 
       getPetReportById: (id) => {
@@ -424,12 +384,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           maintenancePriceHistory: [newPriceRecord, ...state.maintenancePriceHistory],
         }))
 
-        // Crear un aviso sobre el cambio de precio
-        get().addNotice({
-          title: "Actualización de cuota de mantenimiento",
-          description: `La cuota mensual de mantenimiento ha sido actualizada a ${newPrice.toLocaleString()}. Efectiva a partir de ahora.`,
-          type: "maintenance",
-        })
       },
 
       // Función para actualizar la fecha límite de pago
@@ -444,12 +398,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           maintenanceDueDay: validDueDay,
         }))
 
-        // Crear un aviso sobre el cambio de fecha límite
-        get().addNotice({
-          title: "Actualización de fecha límite de pago",
-          description: `La fecha límite de pago de mantenimiento ha sido actualizada al día ${validDueDay} de cada mes. Efectiva a partir de ahora.`,
-          type: "maintenance",
-        })
       },
 
       // Función para actualizar el recargo por pago tardío
@@ -461,12 +409,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           maintenanceLatePaymentFee: newFee,
         }))
 
-        // Crear un aviso sobre el cambio de recargo
-        get().addNotice({
-          title: "Actualización de recargo por pago tardío",
-          description: `El recargo por pago tardío de mantenimiento ha sido actualizado a ${newFee.toLocaleString()}. Efectivo a partir de ahora.`,
-          type: "maintenance",
-        })
       },
 
       // Funciones para comercios cercanos
@@ -512,15 +454,6 @@ export const useAppStore = create<AppState>()((set, get) => ({
           },
         })
 
-        // Crear un aviso sobre la actualización de datos bancarios solo si no se especifica skipNotification
-        if (!details.skipNotification) {
-          get().addNotice({
-            title: "Actualización de datos bancarios",
-            description:
-              "Los datos bancarios para pagos de mantenimiento han sido actualizados. Por favor, verifique la información antes de realizar transferencias.",
-            type: "maintenance",
-          })
-        }
       },
 
       // Funciones para pagos de mantenimiento

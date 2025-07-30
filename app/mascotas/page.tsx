@@ -5,14 +5,16 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import ImageUpload from "@/components/image-upload"
-import { useAppStore } from "@/lib/store"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { useAuthStore } from "@/lib/auth"
 
-export default function MascotaExtraviadaPage() {
+
+export default function Page() {
   const router = useRouter()
-  const { addPetReport, addNotice } = useAppStore()
+  const { user } = useAuthStore()
+  // Ya no usamos el store local para avisos
   const [formData, setFormData] = useState({
     petName: "",
     petType: "",
@@ -44,7 +46,7 @@ export default function MascotaExtraviadaPage() {
   }
 
   // Modificar la función handleSubmit para actualizar las validaciones
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
     setError(null)
@@ -60,7 +62,7 @@ export default function MascotaExtraviadaPage() {
       ]
 
       for (const { field, message } of requiredFields) {
-        if (!formData[field]) {
+        if (!formData[field as keyof typeof formData]) {
           throw new Error(message)
         }
       }
@@ -70,24 +72,48 @@ export default function MascotaExtraviadaPage() {
         throw new Error("Debe proporcionar al menos un método de contacto (nombre, teléfono o email)")
       }
 
-      // Ya no validamos que haya imágenes, son opcionales
+      // Preparar el payload para el aviso SQL
+      const pad = (n: number) => n.toString().padStart(2, '0')
+      const now = new Date()
+      const fecha_publicacion = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`
 
-      // Add pet report
-      const reportId = addPetReport({
-        ...formData,
-        images,
+      // Título y contenido ordenados
+      const titulo = `Mascota extraviada: ${formData.petName}`
+      const contenido = [
+        `Tipo: ${formData.petType}`,
+        formData.petBreed ? `Raza: ${formData.petBreed}` : null,
+        `Color: ${formData.petColor}`,
+        formData.characteristics ? `Características: ${formData.characteristics}` : null,
+        `Fecha de pérdida: ${formData.lostDate}${formData.lostTime ? ' ' + formData.lostTime : ''}`,
+        `Lugar: ${formData.lostLocation}`,
+        formData.details ? `Detalles: ${formData.details}` : null,
+        `Contacto: ${[formData.contactName, formData.contactPhone, formData.contactEmail].filter(Boolean).join(' / ')}`
+      ].filter(Boolean).join('\n')
+
+      // Imagen principal (opcional)
+      const imagen_url = images.length > 0 ? images[0] : null
+
+      // importante: 'mascota_extraviada'
+      const avisoPayload = {
+        titulo,
+        contenido,
+        fecha_publicacion,
+        imagen_url,
+        importante: 'mascota_extraviada',
+        autor_id: user?.id || null,
+        condominio_id: user?.condominiumId || null,
+      }
+
+      // Enviar a la API SQL
+      const res = await fetch("/api/avisos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(avisoPayload)
       })
+      const data = await res.json()
+      if (!data.success) throw new Error(data.message || "Error al guardar el aviso")
 
-      // Create notice with the first image (if available)
-      addNotice({
-        title: `Mascota extraviada: ${formData.petName}`,
-        description: `${formData.petType} ${formData.petBreed} ${formData.petColor}. Visto por última vez en ${formData.lostLocation}`,
-        type: "pet",
-        relatedId: reportId,
-        imageUrl: images.length > 0 ? images[0] : undefined,
-      })
-
-      // Redirect to success page or home
+      // Redireccionar a avisos con éxito
       router.push("/avisos?success=true")
     } catch (error) {
       if (error instanceof Error) {
@@ -96,7 +122,6 @@ export default function MascotaExtraviadaPage() {
         setError("Error al enviar el formulario")
       }
       setIsSubmitting(false)
-      // Hacer scroll hacia arriba para mostrar el mensaje de error
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
   }
